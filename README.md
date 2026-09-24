@@ -8,10 +8,21 @@ Nenhuma ferramenta daqui altera o arquivo de quem escreveu o trabalho. O
 formatador grava uma cópia, e a cópia com controle de alterações é feita pelo
 próprio Word, para que o autor aceite ou recuse cada mudança.
 
+## A Norma
+
+A Norma formata um trabalho na norma do PMPD com um comando só, e entrega, ao lado
+do arquivo, a cópia formatada, a mesma cópia com controle de alterações, o
+relatório do que mudou e o PDF:
+
+    python scripts/norma.py trabalho.docx
+
+Ela roda, em ordem, os programas abaixo, e para na primeira etapa que reprovar.
+
 ## As ferramentas
 
 | | o que faz |
 |---|---|
+| `norma.py` | o comando único: formata, faz a cópia com controle, exporta o PDF e confere a página |
 | `formatar.py` | grava uma cópia do `.docx` na norma do PMPD, que está em `NORMA-PMPD.md` |
 | `revisao.py` | faz, a partir do original e da cópia formatada, a cópia com controle de alterações |
 | `mostrador.py` | mostra as formas que o `.docx` usa, e não escolhe nenhuma; não escreve nada |
@@ -24,6 +35,7 @@ E os controles, que provam que as conferências reprovam o que têm de reprovar:
 | | o que prova |
 |---|---|
 | `controle_formatar.py` | desenha um `.docx` sintético, formata e confere cada regra da norma |
+| `controle_norma.py` | desenha PDFs com folha em branco e referência quebrada, e exige que a Norma acuse |
 | `controle_medir_pagina.py` | desenha páginas de geometria conhecida e exige que o medidor as leia |
 | `controle_capa.py` | desmonta de propósito a capa de um trabalho e exige que o medidor acuse |
 
@@ -37,7 +49,7 @@ PDF.
 Os programas abrem um Word próprio, separado do que estiver aberto, e fecham só
 esse. Pode-se trabalhar no Word enquanto eles rodam.
 
-## Como usar
+## Como usar cada etapa em separado
 
     python scripts/formatar.py trabalho.docx --saida trabalho-norma.docx
     python scripts/revisao.py trabalho.docx trabalho-norma.docx --saida trabalho-norma-com-controle.docx
@@ -52,6 +64,7 @@ aceitas ou recusadas no Word antes.
 Antes de confiar numa mudança do programa:
 
     python scripts/controle_formatar.py
+    python scripts/controle_norma.py
     python scripts/controle_medir_pagina.py
 
 ## O que as conferências garantem, e o que não
