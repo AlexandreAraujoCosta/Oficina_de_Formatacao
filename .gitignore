@@ -1,0 +1,44 @@
+# Este repositório traz a maquinaria, e nunca o material.
+# O que fica de fora é trabalho de terceiro, e a política está em POLITICA.md.
+
+# Trabalhos e o que deles se extrai. As duas pastas abaixo sao onde se
+# trabalha: crie trabalhos/<nome>/ e rode de la. Nada dali sobe.
+trabalhos/
+entregas/
+
+*.docx
+*.doc
+*.odt
+*.pdf
+extracao/
+SUSPEITAS-*.md
+relatorios/
+corpus/
+paginas-*/
+tmp-*/
+
+# Rastro de sessão
+*.bak
+*.bak-*
+*.orig
+__pycache__/
+*.py[cod]
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# A analise de um trabalho e material sobre pessoa nomeada, como o proprio
+# trabalho. RELATORIO.md e ANEXO.md sao os nomes que a cadeia usa por padrao,
+# entao ignora-los por nome vale para qualquer rodada, e nao so para esta.
+RELATORIO*.md
+ANEXO*.md
+COMENTARIOS-*.md
+COMPREENSIBILIDADE-RESULTADO*.md
+
+# Vai para o GitHub so o necessario para usar as ferramentas: os programas, o
+# README e a norma que o programa aplica. O registro de desenho e os prompts de
+# sessao contam como os trabalhos foram medidos, e ficam so na maquina.
+REGISTRO.md
+prompts/
