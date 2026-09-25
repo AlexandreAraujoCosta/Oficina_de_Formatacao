@@ -17,6 +17,9 @@ relatório do que mudou e o PDF:
     python scripts/norma.py trabalho.docx
 
 Ela roda, em ordem, os programas abaixo, e para na primeira etapa que reprovar.
+Para usá-la por um agente (Claude Code, ou VS Code com Copilot em modo agente),
+o `AGENTS.md` traz as instruções que o agente segue, e a página da Norma nas
+Oficinas Acadêmicas traz o pedido a colar.
 
 ## As ferramentas
 

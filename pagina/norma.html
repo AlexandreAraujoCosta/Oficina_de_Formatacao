@@ -1,0 +1,445 @@
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Mulish:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<title>Norma: a formatação na norma do PMPD</title>
+<style>
+  :root {
+    --ground:      #FBFAF7;
+    --surface:     #F3F1EC;
+    --sunken:      #EAE7E0;
+    --ink:         #191B1F;
+    --ink-soft:    #3D4149;
+    --muted:       #5F636B;
+    --faint:       #6C7079;
+    --rule:        #D9D5CC;
+    --rule-firm:   #BFBAAE;
+    --rule-soft:   #E6E2DA;
+    --accent:      #33477E;
+    --accent-soft: #E1E5F1;
+    --warn:        #8A5722;
+    --warn-soft:   #F2E7D8;
+    --good:        #37613F;
+    --good-soft:   #E0EBE1;
+    --danger:      #A3352B;
+    --danger-soft: #F6E6E3;
+
+    --serif: Literata, "Iowan Old Style", Charter, Georgia, "Times New Roman", serif;
+    --sans: Mulish, "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", "Cascadia Mono", ui-monospace, Consolas, "SF Mono", monospace;
+
+    --measure: 66ch;
+
+    /* seis degraus, na medida de arcos.org.br/direito-ciencia */
+    --t-xs: 14px;    /* rotulo em versalete */
+    --t-2xs: 12px;   /* faixa de identificacao */
+    --t-sm: 16px;    /* texto secundario */
+    --t-md: 18px;    /* corpo, em Mulish */
+    --t-lg: 22px;    /* linha de abertura */
+    --t-h3: 19px;
+    --t-h2: 24px;
+
+    /* nomes proprios desta pagina, apontando para o sistema */
+    --paper:       var(--ground);
+    --paper-sunk:  var(--sunken);
+    --ink-faint:   var(--muted);
+    --correcao:    var(--danger);
+    --medida:      var(--accent);
+    --conforme:    var(--good);
+    --gap: 1.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #16171A;
+      --surface:     #1D1F23;
+      --sunken:      #24262B;
+      --ink:         #E9E6E0;
+      --ink-soft:    #C4C2BD;
+      --muted:       #94979E;
+      --faint:       #8A8D94;
+      --rule:        #34373D;
+      --rule-firm:   #454A52;
+      --rule-soft:   #2A2D32;
+      --accent:      #97AAE2;
+      --accent-soft: #23283A;
+      --warn:        #D3A163;
+      --warn-soft:   #33291B;
+      --good:        #83B78D;
+      --good-soft:   #1E2A20;
+      --danger:      #E07A6E;
+      --danger-soft: #2E1E1C;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #16171A;
+    --surface:     #1D1F23;
+    --sunken:      #24262B;
+    --ink:         #E9E6E0;
+    --ink-soft:    #C4C2BD;
+    --muted:       #94979E;
+    --faint:       #8A8D94;
+    --rule:        #34373D;
+    --rule-firm:   #454A52;
+    --rule-soft:   #2A2D32;
+    --accent:      #97AAE2;
+    --accent-soft: #23283A;
+    --warn:        #D3A163;
+    --warn-soft:   #33291B;
+    --good:        #83B78D;
+    --good-soft:   #1E2A20;
+    --danger:      #E07A6E;
+    --danger-soft: #2E1E1C;
+  }
+
+  :root[data-theme="light"] {
+    --ground:      #FBFAF7;
+    --surface:     #F3F1EC;
+    --sunken:      #EAE7E0;
+    --ink:         #191B1F;
+    --ink-soft:    #3D4149;
+    --muted:       #5F636B;
+    --faint:       #6C7079;
+    --rule:        #D9D5CC;
+    --rule-firm:   #BFBAAE;
+    --rule-soft:   #E6E2DA;
+    --accent:      #33477E;
+    --accent-soft: #E1E5F1;
+    --warn:        #8A5722;
+    --warn-soft:   #F2E7D8;
+    --good:        #37613F;
+    --good-soft:   #E0EBE1;
+    --danger:      #A3352B;
+    --danger-soft: #F6E6E3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--t-md);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+  /* ---------------------------------------------------------- cabeçalho */
+  .top { border-bottom: 2px solid var(--ink); padding-bottom: 1.1rem; margin-bottom: 2rem; }
+  .top h1 {
+    font-family: var(--serif);
+    font-size: clamp(28px, 5vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    margin: 0 0 .4rem;
+    text-wrap: balance;
+  }
+  .top p { margin: 0; max-width: var(--measure); color: var(--ink-soft); }
+  .top .ressalva {
+    margin: .9rem 0 0; max-width: var(--measure);
+    border-left: 3px solid var(--danger); padding-left: .9rem;
+    font-size: var(--t-sm); color: var(--ink-soft);
+  }
+  .via-guia { margin: 8px 0 26px; }
+
+  .via-guia h2 { font-family: var(--serif); margin-bottom: 8px; }
+
+  .passos {
+    counter-reset: p;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 26px;
+  }
+
+  .passos li {
+    counter-increment: p;
+    position: relative;
+    padding-left: 34px;
+    margin-bottom: 12px;
+    line-height: 1.55;
+  }
+
+  .passos li::before {
+    content: counter(p);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    font-family: var(--sans);
+    font-size: var(--t-sm);
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border: 1px solid var(--rule-firm);
+    border-radius: 50%;
+  }
+  .cuidados h2 {
+    font-family: var(--serif);
+    font-size: var(--t-h2);
+    font-weight: 600;
+    margin: 0 0 .6rem;
+  }
+
+  .via-guia h3 { font-family: var(--serif); font-size: var(--t-md); margin: 22px 0 6px; }
+
+  .pedido { border: 1px solid var(--rule); border-radius: 3px; background: var(--sunken);
+           padding: 14px 16px; margin: 16px 0; }
+
+  .pedido-rot { font-size: var(--t-sm); color: var(--ink-faint); margin: 0 0 8px; }
+
+  .pedido-txt { font-family: var(--mono); font-size: var(--t-sm); line-height: 1.5; white-space: pre-wrap; margin: 0 0 12px; }
+
+  :focus-visible { outline: 2px solid var(--medida); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---------------------------------------------------------- cuidados */
+  .cuidados { border-top: 2px solid var(--ink); margin-top: 3.5rem; padding-top: 1.6rem; }
+  .cuidados h3 {
+    font-family: var(--sans); font-size: var(--t-xs); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; margin: 2rem 0 .7rem;
+  }
+  .cuidados > p { max-width: var(--measure); color: var(--ink-soft); }
+  button.copiar {
+    font-family: var(--sans); font-size: var(--t-sm); font-weight: 600;
+    background: var(--ink); color: var(--paper); border: 1px solid var(--ink);
+    padding: .5rem 1.1rem; cursor: pointer; white-space: nowrap;
+  }
+  button.copiar[data-estado="feito"] { background: var(--conforme); border-color: var(--conforme); }
+  a { color: var(--medida); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover, a:focus-visible { color: var(--ink); }
+
+  /* --- o que esta pagina usa e a folha do Alberto nao definia sozinho --- */
+  .alerta {
+    border-left: 3px solid var(--danger);
+    padding: .1rem 0 .1rem 1rem;
+    margin: 1.6rem 0;
+    max-width: var(--measure);
+  }
+  .alerta p { margin: .4rem 0; }
+  .cmd { position: relative; border: 1px solid var(--rule); border-radius: 3px;
+         background: var(--sunken); padding: .7rem 5.5rem .7rem .9rem;
+         margin: .55rem 0 .9rem; }
+  .cmd pre { font-family: var(--mono); font-size: var(--t-sm); line-height: 1.5;
+             white-space: pre-wrap; word-break: break-all; margin: 0; }
+  .cmd .copiar, .pedido .copiar { top: .45rem; right: .45rem; }
+  .pedido { position: relative; padding-right: 5.5rem; }
+  .copiar { position: absolute; top: .7rem; right: .7rem; font: inherit; font-size: var(--t-sm);
+            color: inherit; background: var(--paper); border: 1px solid var(--rule-firm);
+            border-radius: 3px; padding: .25rem .7rem; cursor: pointer; }
+  .copiar:hover { border-color: var(--ink-soft); }
+  .wrap > .ressalva { border-left: 3px solid var(--danger); padding-left: .9rem;
+                      margin: 2.5rem 0 0; max-width: var(--measure);
+                      font-size: var(--t-sm); color: var(--ink-soft); }
+  .cuidados h3 { font-family: var(--serif); font-size: var(--t-md); margin: 22px 0 6px; }
+
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: var(--t-2xs);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--medida);
+    margin: 0 0 18px;
+  }
+
+  /* --- faixa de identificacao e navegacao entre as paginas da oficina --- */
+  .eyebrow a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
+  .eyebrow a:hover, .eyebrow a:focus-visible { opacity: .7; }
+  /* O nome da pagina respira entre a faixa e o texto que a descreve. */
+  .eyebrow { margin: 0 0 2.4rem; }
+  .top h1, header h1, .wrap > h1 { margin-bottom: 1.3rem; }
+
+  /* A faixa tem dois grupos, e o que os separa e uma linha e nao um travessao:
+     o traco no meio do texto se le como pausa, e aqui a divisao e de natureza. */
+  .eyebrow .eb-linha { display: block; }
+  .eyebrow .eb-atual { opacity: .55; }
+  .eyebrow .eb-baixo { margin-top: .3rem; padding-top: .3rem; border-top: 1px solid var(--rule); }
+
+  /* --- ficha do autor, na forma da pagina da Oficina --- */
+  .byline {
+    border-left: 2px solid var(--rule);
+    padding: .1rem 0 .1rem 1.1rem;
+    margin: 1.6rem 0 2.2rem;
+    max-width: var(--measure);
+  }
+  .byline p { margin: 0 0 .35rem; }
+  .byline p:last-child { margin-bottom: 0; }
+  .byline .author { font-size: var(--t-sm); color: var(--ink-soft); }
+  .byline .author b { font-weight: 600; color: var(--ink); }
+
+  /* O titulo respira o proprio corpo acima e abaixo. */
+  .eyebrow { margin: 0; }
+  .top h1, header h1, .wrap > h1 { margin: 1em 0; }
+
+  /* --- escala do sistema: uma so em todas as paginas da oficina --- */
+  h1, .top h1, header h1, .wrap > h1 { font-family: var(--serif); font-weight: 700;
+    font-size: clamp(28px, 5vw, 36px); line-height: 1.2; }
+  .wrap h2, .via-guia h2, .cuidados h2 { font-family: var(--serif); font-size: var(--t-h2); font-weight: 700; line-height: 1.2; }
+  .wrap h3, .via-guia h3, .cuidados h3 { font-family: var(--serif); font-size: var(--t-h3); font-weight: 700; line-height: 1.2;
+    letter-spacing: normal; text-transform: none; color: var(--ink); }
+  /* a medida vale para todo texto corrido, e nao so para o que esta em secao */
+  .wrap p, .wrap li, .wrap dd { max-width: var(--measure); }
+  /* Os dois paragrafos da ficha sao o mesmo comentario, e vao na mesma fonte,
+     no mesmo corpo e na mesma cor. */
+  .byline p, .byline .author, .byline .affil, .byline .assist, .byline .fina {
+    font-family: var(--sans);
+    font-size: var(--t-sm);
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0 0 .5rem;
+  }
+  .byline p:last-child { margin-bottom: 0; }
+  .byline b { color: var(--ink); font-weight: 600; }
+</style>
+<div class="wrap">
+
+  <header class="top">
+  <p class="eyebrow"><span class="eb-linha"><a href="https://direito.unb.br/">Faculdade de Direito da UnB</a> · <a href="https://pmpd.unb.br/">PMPD</a> · <a href="https://claude.ai/code/artifact/4fe98c90-3461-4d03-8c83-7ba2fe0c1c72">Oficinas Acadêmicas</a></span><span class="eb-linha eb-baixo">Oficina de Formatação: <span class="eb-atual" aria-current="page">Norma</span></span></p>
+    <h1>Norma: a formatação na norma do PMPD</h1>
+  <p>Um programa que recebe o trabalho em <code>.docx</code> e devolve uma cópia formatada na
+  norma do programa: fonte, entrelinha e margens, títulos com estilo, capa e pré-textual
+  diagramados, sumário e lista de ilustrações automáticos, legendas, citações, referências e
+  numeração de páginas. A norma está escrita por extenso em
+  <a href="https://github.com/AlexandreAraujoCosta/Oficina_de_Formatacao/blob/main/NORMA-PMPD.md">NORMA-PMPD.md</a>,
+  com a seção da ABNT de onde vem cada regra e as divergências assumidas.</p>
+
+  <p><b>O arquivo de quem escreveu não é alterado.</b> A Norma grava uma cópia e, ao lado dela,
+  a mesma cópia com controle de alterações, feita pelo próprio Word, para que cada mudança seja
+  aceita ou recusada no Word, como uma revisão qualquer.</p>
+
+  <p><b>Desta página volta o conjunto:</b> a cópia formatada, a cópia com controle de
+  alterações, o relatório do que mudou e o PDF, todos na pasta do trabalho.</p>
+
+    <div class="byline">
+      <p class="author">Ferramenta desenvolvida por <a href="https://sigaa.unb.br/sigaa/public/docente/portal.jsf?siape=2332291"><b>Alexandre Araújo Costa</b></a> (Doutor em Direito, Professor da UnB, Coordenador do PMPD, <a href="mailto:alexandrearcos@unb.br">alexandrearcos@unb.br</a>), com assistência do modelo Claude Opus 5.5, em Claude Code. O código está no repositório <a href="https://github.com/AlexandreAraujoCosta/Oficina_de_Formatacao">Oficina_de_Formatacao</a>.</p>
+      <p>Trata-se de um protótipo, ainda em fase de testes, e todo feedback será muito útil para aperfeiçoá-lo. Se você usar a ferramenta, envie por favor um relato por <a href="https://docs.google.com/forms/d/e/1FAIpQLSdziEHALH04stCpbVCHqDODK072YKzRRWCaN4ZhsiHojYrKmg/viewform?usp=dialog">este formulário</a>, pois, a partir deles, é possível compreender o funcionamento da ferramenta em situações reais.</p>
+    </div>
+  </header>
+
+  <div class="alerta">
+    <p><b>A Norma precisa de Windows com o Word instalado.</b> O Word confere que o arquivo
+    abre, faz a cópia com controle de alterações, atualiza sumário e listas e exporta o PDF. Num
+    Mac ou num computador sem Word ela não roda.</p>
+    <p><b>Trabalho com alterações controladas pendentes é recusado.</b> Aceite ou recuse as
+    alterações no Word, salve, e rode de novo: a Norma não decide sobre a revisão de ninguém.</p>
+  </div>
+
+  <div class="via-guia" id="guia-agente">
+    <h2>Por um agente, sobre a pasta do trabalho</h2>
+    <p>Agente é o assistente que roda programas na sua máquina, e não só conversa. Serve o
+    <b>Claude Code</b>, que exige assinatura da Claude, e serve o <b>VS Code</b> com a extensão
+    <b>GitHub Copilot</b> e a sua própria chave de API. O agente instala o que falta, roda a
+    Norma e olha as páginas do resultado antes de entregar.</p>
+
+    <ol class="passos">
+      <li><b>Instale o agente.</b> O <b>Claude Code</b> pelo instalador do site da Anthropic,
+      entrando com a sua conta. O <b>VS Code</b> pelo site, e a extensão <b>GitHub Copilot</b>
+      pelo painel de extensões; depois ligue a sua chave no seletor de modelos.</li>
+
+      <li><b>Abra o agente na pasta onde está o trabalho.</b> No <b>Claude Code</b>, chame o
+      programa dentro dela. No <b>VS Code</b>, abra o chat com <b>Ctrl+Alt+I</b> e ponha em
+      <b>modo agente</b>, no seletor do alto do painel: é o modo que tem terminal.
+        <div class="cmd">
+          <button type="button" class="copiar" data-alvo="c-abrir">Copiar</button>
+          <pre id="c-abrir">claude</pre>
+        </div>
+      </li>
+
+      <li><b>Peça a formatação</b>, com o pedido abaixo, trocando o nome do arquivo.</li>
+    </ol>
+
+    <div class="pedido">
+      <button type="button" class="copiar" data-alvo="c-pedido-agente">Copiar</button>
+      <p class="pedido-rot">Cole isto na conversa:</p>
+      <pre class="pedido-txt" id="c-pedido-agente">Clone o repositório da Oficina de Formatação nesta pasta:
+
+git clone https://github.com/AlexandreAraujoCosta/Oficina_de_Formatacao
+
+Leia por inteiro o Oficina_de_Formatacao/AGENTS.md e siga o que ele diz para
+formatar o trabalho "NOME DO ARQUIVO.docx" desta pasta com a Norma.
+
+Não altere o arquivo do trabalho. Não rode git além do clone. Não publique
+nada. Se faltar alguma coisa, diga o que falta.</pre>
+    </div>
+
+    <h3>Aprovar os comandos</h3>
+    <p>Os agentes pedem permissão para rodar cada comando. A Norma lê o trabalho e escreve a
+    cópia e o relatório na mesma pasta; nenhum programa dela apaga ou envia coisa alguma.</p>
+
+    <h3>Se quebrar</h3>
+    <p>Diga ao agente o que apareceu na tela, com as palavras dele. Ele lê o erro e o
+    <code>AGENTS.md</code> diz o que fazer em cada caso.</p>
+  </div>
+
+  <div class="via-guia" id="guia-direto">
+    <h2>Por conta própria, sem agente</h2>
+    <p>Com o <b>Python 3</b> instalado, no terminal aberto na pasta do trabalho:</p>
+    <div class="cmd">
+      <button type="button" class="copiar" data-alvo="c-direto">Copiar</button>
+      <pre id="c-direto">git clone https://github.com/AlexandreAraujoCosta/Oficina_de_Formatacao
+pip install pymupdf pywin32
+python Oficina_de_Formatacao/scripts/norma.py "NOME DO ARQUIVO.docx"</pre>
+    </div>
+    <p>O programa diz, a cada etapa, o que conferiu, e para na primeira que reprovar. Enquanto
+    ele roda, o Word pode continuar aberto: a Norma usa uma instância própria e fecha só ela.</p>
+  </div>
+
+  <section class="cuidados" id="entrega">
+    <h2>O que volta</h2>
+    <h3>Quatro arquivos, ao lado do trabalho</h3>
+    <p><code>…-norma.docx</code> é a cópia formatada.
+    <code>…-norma-com-controle-de-alteracoes.docx</code> é a mesma cópia com cada mudança
+    marcada: é por ela que se revisa, aceitando ou recusando no Word.
+    <code>…-norma-relatorio.md</code> diz o que mudou e o que conferir, e
+    <code>…-norma.pdf</code> é a cópia formatada em PDF, para olhar as páginas.</p>
+  </section>
+
+  <section class="cuidados" id="cuidados">
+    <h2>Cuidados na aplicação</h2>
+
+    <h3>Olhe as páginas antes de entregar</h3>
+    <p>A Norma confere o que se confere no arquivo: o texto parágrafo a parágrafo, os
+    marcadores, hiperlinks e notas, e que o Word abre o resultado. No PDF ela procura folha em
+    branco e referência de sumário quebrada. O resto se confere olhando: a capa, o sumário, a
+    abertura de cada capítulo, as ilustrações.</p>
+
+    <h3>O que ela muda no texto, e diz</h3>
+    <p>A Norma não reescreve prosa. Mexe em pouca coisa escrita, e o relatório lista cada uma:
+    o número dos títulos, que passa a ser seguido de tabulação; o título de capítulo com
+    dois-pontos, cujo complemento desce para um subtítulo; as palavras-chave, que passam ao
+    formato da NBR 6028; e o título da dedicatória e da epígrafe, que a ABNT não quer.</p>
+
+    <h3>O que ela aponta e não resolve</h3>
+    <p>Parágrafo que parece título e não recebeu estilo de título, espaço grande posto à mão
+    para empurrar texto, e remissões do texto a capítulos e seções, que ela não renumera.
+    Numeração automática de título feita no Word fica como o Word a faz.</p>
+  </section>
+
+  <p class="ressalva">Ferramenta de formatação, feita por Alexandre Araújo Costa,
+  Faculdade de Direito da UnB. O código está aberto em
+  <a href="https://github.com/AlexandreAraujoCosta/Oficina_de_Formatacao">github.com/AlexandreAraujoCosta/Oficina_de_Formatacao</a>.</p>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll(".copiar").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var el = document.getElementById(b.dataset.alvo);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent).then(function () {
+        var antes = b.textContent;
+        b.textContent = "Copiado";
+        setTimeout(function () { b.textContent = antes; }, 1600);
+      }).catch(function () {
+        var r = document.createRange();
+        r.selectNodeContents(el);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      });
+    });
+  });
+})();
+</script>
