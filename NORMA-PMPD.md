@@ -27,12 +27,11 @@ Mudar um número ali muda o resultado; mudar aqui sem mudar lá não muda nada.
 | margem direita | 3,3 cm |
 | margem superior | 3,3 cm |
 | margem inferior | 2,5 cm |
-| cabeçalho | título do capítulo à esquerda, número da página à direita |
-| distância do cabeçalho à borda superior | 2 cm (NBR 14724, 5.3) |
-| corpo do cabeçalho | 10 pt, título corrente e número de página |
+| posição vertical do cabeçalho | no meio da margem superior (cerca de 1,45 cm da borda) |
+| cabeçalho | só o número de página, à direita, em 10 pt e itálico |
 | contagem | começa na folha de rosto; a capa é a folha 0 (NBR 14724, 5.3) |
 | exibição | a partir da primeira folha da parte textual |
-| hifenização | ligada no documento, com no máximo 2 hífens seguidos |
+| hifenização | desligada; só a versão final de impressão (`--impressao`) a liga, com no máximo 2 hífens seguidos |
 
 ## Os estilos
 
@@ -54,36 +53,30 @@ só.
 
 Citação e nota de rodapé vão em 12 pt; legenda e fonte da ilustração, em 11 pt e
 em itálico. A NBR 14724 (5.1) quer esses elementos em tamanho menor e uniforme.
-O cabeçalho, com o número de página, vai em 10 pt: o título corrente divide a
-linha com o número, e num corpo maior um título longo dobra para duas linhas.
+O número de página vai em 10 pt.
 Onde o autor escreveu o corpo à mão nas corridas, ele sai, para que o estilo
 governe: corpo escrito na corrida vence o do estilo.
 
 ### Título 1, das seções primárias
 
-Centralizado, 16 pt, negrito, 0 pt antes e 24 pt depois, quebra de página antes.
-Sem recuo de primeira linha e sem hifenização. Entra no sumário. O 0 antes põe o
-título no alto da mancha (NBR 14724, 5.2.2).
+Alinhado à esquerda, 16 pt, negrito, entrelinha simples, 0 pt antes e 36 pt
+depois, quebra de página antes. Recuo pendente de 1,25 cm, o mesmo do recuo de
+primeira linha do corpo: o número fica na margem e o título começa onde começa o
+parágrafo recuado. Sem hifenização. Entra no sumário. O 0 antes põe o título no
+alto da mancha (NBR 14724, 5.2.2).
 
-**O título de capítulo é curto.** O que vem antes do dois-pontos é o título; o
-que vem depois desce para um parágrafo de subtítulo. Não é economia de espaço: é
-o que permite o cabeçalho corrente ler o título **vivo**, pelo campo `STYLEREF`,
-em vez de uma cópia curta guardada em algum lugar. Cópia de texto que o autor
-edita envelhece em silêncio, e o cabeçalho passa a mentir sem que nada acuse.
+O Título 1 **sem número** (REFERÊNCIAS, APÊNDICES, ANEXOS) fica centralizado e
+sem recuo (NBR 14724, 5.2.3; NBR 6024, 4.1, alínea h).
 
-**Diverge da ABNT:** a NBR 6024:2012 (4.1, alínea c) quer o título numerado
-alinhado à esquerda. O centralizado é decisão da coordenação.
-
-### Subtítulo de capítulo
-
-Centralizado, corpo do texto, **sem negrito**, para não disputar com o título.
-Fora do sumário. Recebe o que vinha depois do dois-pontos, e o dois-pontos sai,
-porque a quebra de parágrafo passou a fazer o que ele fazia.
+O título longo fica inteiro: encurtá-lo é decisão de quem escreve. (O programa
+sabe dividi-lo no dois-pontos, com o complemento num parágrafo de subtítulo, e a
+opção está desligada.)
 
 ### Título 0, dos títulos do pré-textual
 
-A mesma forma do Título 1, e fora do sumário. É o que recebe RESUMO, ABSTRACT,
-as listas, os agradecimentos e o próprio SUMÁRIO.
+A forma do Título 1, mas centralizado e sem recuo, porque não tem número, e
+fora do sumário. É o que recebe RESUMO, ABSTRACT, as listas, os agradecimentos e
+o próprio SUMÁRIO.
 
 Fora do sumário quer dizer `outlineLvl` 9, que é o valor que o esquema do OOXML
 reserva para corpo de texto. O parágrafo fica com a aparência de título e o campo
@@ -96,10 +89,11 @@ próprio insere o campo, e sem isto ele sai em Cambria azul.
 
 ### Título 2, das seções secundárias
 
-Alinhado à esquerda, 13 pt, negrito, 18 pt antes e 9 pt depois. Recuo pendente
-de 0,9 cm, com parada de tabulação no mesmo ponto: o título começa na coluna de
-0,9 cm e a segunda linha alinha sob a primeira letra dele (NBR 6024, 4.1,
-alínea i). Sem hifenização. Entra no sumário.
+Alinhado à esquerda, 13 pt, negrito, entrelinha simples, 18 pt antes e 12 pt
+depois. Recuo pendente de 1,25 cm, com parada de tabulação no mesmo ponto: o
+título começa na coluna do parágrafo recuado e a segunda linha alinha sob a
+primeira letra dele (NBR 6024, 4.1, alínea i). Sem hifenização. Entra no
+sumário.
 
 A parada explícita é necessária. Parágrafo que traz `numPr` com `numId` 0, resto
 de uma lista que o autor desligou, perde a parada implícita do recuo pendente, e o
@@ -118,19 +112,27 @@ O número vem seguido de **tabulação**, sem ponto: `2⇥TÍTULO DO CAPÍTULO`,
 
 A tabulação, e não o espaço, é o que alinha os títulos numa coluna, no próprio
 título e no sumário (NBR 6027, 5.2). Cada estilo numerado declara a sua parada:
-sem ela, o Word usa as paradas padrão, o título centralizado ganha um vão largo
-e, no cabeçalho corrente, o título é empurrado para a parada do número de
-página. O Título 1, centralizado, tem parada
-a 0,5 cm, que dá entre o número e o título um vão pouco maior que um espaço.
+sem ela, o Word usa as paradas padrão.
 
 **A Introdução é numerada**, como as demais seções primárias. A NBR 14724:2024
 (5.2.3) e a NBR 6024:2012 (4.1, alínea h) listam os títulos sem indicativo
 numérico, e a Introdução não está entre eles; a numeração das seções primárias
 começa em 1 (NBR 6024, 4.1, alínea f).
 
-O número é texto digitado pelo autor, e não numeração automática do Word. O
-programa troca os caracteres do começo do título e registra cada troca, para que
-a conferência de texto saiba o que esperar.
+**A numeração é automática.** O número digitado pelo autor sai, e o Word passa a
+numerar os títulos por uma lista ligada aos estilos: acrescentar, tirar ou mover
+um título renumera os outros. A numeração progressiva vai até o Título 3
+(`2.1.3`); o Título 4 leva só uma letra, `a)`, que recomeça a cada Título 3, na
+forma da alínea (NBR 6024, 4.2). Cada número tirado vai
+registrado, para que a conferência de texto saiba o que esperar, e o relatório
+avisa quando a sequência digitada não é a que a lista dá, porque aí as remissões
+do texto ("ver seção 4.4") ficam erradas; o de quarto nível, que passa de número
+a letra, é sempre avisado. O título sem número recebe a lista
+desligada, para que o estilo não o numere.
+
+O trabalho que já numera algum título pela lista do Word fica com a numeração
+dele: trocar a lista do autor apagaria os números dos títulos que ela numera. Aí
+o número digitado que houver passa a ser seguido de tabulação.
 
 ### Apêndice e anexo
 
@@ -139,9 +141,8 @@ que o autor lhes deu (NBR 14724, 4.2.3.3 e 4.2.3.4; NBR 6024, 4.1, alínea h).
 
 ### Os demais níveis de título
 
-Sem recuo de primeira linha e sem hifenização. O Título 3 leva recuo pendente e
-parada a 1,3 cm, pela mesma razão do Título 2. O resto fica como o arquivo
-trouxer.
+Entrelinha simples e sem hifenização. Os Títulos 3 e 4 levam recuo pendente e
+parada a 1,25 cm, como o Título 2. O resto fica como o arquivo trouxer.
 
 ### Citação, que é o parágrafo recuado
 
@@ -246,6 +247,10 @@ espaço entre blocos vem da posição deles.
 Estilo usado só pelo pré-textual solta o corpo que declarava, para seguir o
 `Normal`. O que ele declara de próprio, como um recuo, fica.
 
+O texto dos agradecimentos é prosa corrida, e vai no estilo `TextoPreTextual`:
+justificado e com o recuo de primeira linha do corpo, na entrelinha simples do
+pré-textual. O recuo e o alinhamento escritos à mão saem.
+
 ### Tabela do trabalho
 
 Não é forma: é defesa. Devolve a quem herda o corpo e a entrelinha que o `Normal`
@@ -308,21 +313,17 @@ calculado: se o autor reescrever o texto, ele continua no pé. Cada uma tem a su
 seção, mesmo quando uma vem logo depois da outra. As seções novas usam o
 cabeçalho vazio do pré-textual e não reiniciam a contagem.
 
-## O cabeçalho corrente
+## O cabeçalho
 
-Título do capítulo à esquerda, número da página à direita, na mesma linha,
-separados por tabulação, em 10 pt, a 2 cm da borda superior. O corpo vem do
-estilo `Cabealho`, e o programa cria o estilo quando o arquivo não o tem e o
-aplica ao parágrafo do cabeçalho: o resultado do campo é escrito pelo Word e
-segue o estilo, e não o que se escreva nas corridas. O número fica na
-margem direita do texto, e não a 2 cm da borda como a NBR 14724 (5.3) pede, para
-que o número e o título corrente fiquem na coluna do texto.
+Só o número de página, à direita, em 10 pt e itálico, por decisão da coordenação.
+A linha fica no meio da margem superior: a distância da borda é a metade do que
+sobra da margem depois da altura da linha. O corpo e o itálico vêm do estilo
+`Cabealho`, que o programa cria quando o arquivo não o tem e aplica ao parágrafo
+do número; o corpo escrito nas corridas sai. O número fica na margem direita do
+texto, e não a 2 cm da borda como a NBR 14724 (5.3) pede.
 
-O título vem do campo `STYLEREF 1`, que lê o parágrafo em estilo Título 1 daquela
-página, ou o último antes dela. O argumento numérico evita o nome do estilo, que
-é localizado: num documento em português o Word chama `heading 1` de `Título 1`,
-e um campo escrito com um dos dois falha no outro. O campo traz a tabulação do
-título, e por isso o cabeçalho tem uma parada a 0,5 cm, como o Título 1.
+O programa sabe pôr o título do capítulo no cabeçalho, pelo campo `STYLEREF 1`,
+com o número dele quando a numeração é automática; a opção está desligada.
 
 O pré-textual não tem cabeçalho, porque está em outra seção.
 
@@ -332,6 +333,17 @@ A NBR 14724 (5.3) manda contar as folhas a partir da folha de rosto e não
 numerar as pré-textuais. A capa é a folha 0, o pré-textual vira uma seção com
 cabeçalho próprio, que não traz o campo de página, e a seção textual mantém o
 cabeçalho com o número. O Word continua a contagem de uma para a outra sozinho.
+
+**O estilo `msonormal`**, que o Word cria quando se cola texto de página da web
+ou de e-mail, passa ao `Normal`: o parágrafo que o usa perde o estilo, e o estilo
+sai do arquivo.
+
+**Trabalho sem número de página ganha o número.** Seção da parte textual que não
+mostra número, nem no cabeçalho nem no rodapé, recebe o campo de página: no
+cabeçalho dela, se ela tem um, e num cabeçalho novo, se ela herdaria o cabeçalho
+vazio do pré-textual. Número posto pelo autor no rodapé fica onde está. Se o
+pré-textual não ficou em seção própria, o número sairia também na capa, e o
+programa não o põe: o relatório avisa.
 
 Há trabalho que resolve o mesmo problema com retângulos brancos sobre fundo
 branco, um por folha, cobrindo o número. O programa apaga a
@@ -387,9 +399,9 @@ foram trazidas:
 - **Espaço repetido** vira um só, da parte textual em diante. Na capa ele às
   vezes faz alinhamento, e fica.
 - **Os vazios do corpo.** O encostado em título, citação ou ilustração sai,
-  porque o estilo já dá o espaço. O vazio entre dois parágrafos de corpo pode ser
-  pausa que o autor quis: vira espaço depois do parágrafo anterior, na altura que
-  tinha, e o relatório lista onde, para conferir na página.
+  porque o estilo já dá o espaço. O que vem depois de parágrafo de corpo também
+  sai: o corpo abre com recuo de primeira linha, e o recuo já marca o parágrafo
+  novo.
 - **O anexo do relatório**, gravado ao lado do arquivo formatado
   (`...-relatorio.md`): quem recebe o arquivo precisa saber o que mudou nele.
 - **O que só se aponta.** Parágrafo que parece título e não recebeu estilo de
@@ -404,11 +416,11 @@ Todas contra um "deve" da norma, e mantidas por decisão da coordenação:
 - **Entrelinha de 1,3**, contra 1,5 (NBR 14724, 5.2).
 - **Margens de 3,3 cm e 2,5 cm**, contra 3 cm e 2 cm (NBR 14724, 5.1). As da
   NBR são assimétricas por causa da encadernação.
-- **Título 1 centralizado**, contra alinhado à esquerda (NBR 6024, 4.1, c).
-- **Título 2 com 18 pt antes e 9 pt depois**, contra 1,5 antes e depois
+- **Título 2 com 18 pt antes e 12 pt depois**, contra 1,5 antes e depois
   (NBR 14724, 5.2.2).
-- **Número de página na margem do texto**, contra 2 cm da borda direita
-  (NBR 14724, 5.3).
+- **Títulos em entrelinha simples**, contra 1,5 (NBR 14724, 5.2).
+- **Número de página na margem do texto e no meio da margem superior**, contra
+  2 cm da borda direita e 2 cm da borda superior (NBR 14724, 5.3).
 - **Três corpos menores em vez de um**: 12 pt para citação e notas, 11 pt para
   legenda e fonte, 10 pt para cabeçalho e número de página. A NBR 14724 (5.1)
   quer esses elementos num tamanho só.

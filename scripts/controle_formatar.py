@@ -70,6 +70,10 @@ ESTILOS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Recuodecorpodetexto"><w:name w:val="Body Text Indent"/>
 <w:basedOn w:val="Normal"/><w:pPr><w:ind w:left="3402"/><w:jc w:val="both"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="msonormal0"><w:name w:val="msonormal"/>
+<w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="100" w:beforeAutospacing="1"/></w:pPr></w:style>
+<w:style w:type="paragraph" w:customStyle="1" w:styleId="Derivado"><w:name w:val="Derivado"/>
+<w:basedOn w:val="msonormal0"/></w:style>
 </w:styles>"""
 
 CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -148,6 +152,10 @@ def desenhar(caminho):
     corpo.append(p("ABNT - Associacao Brasileira de Normas Tecnicas"))
     # Espaco repetido no pre-textual: la ele fica.
     corpo.append(p("UNB - Universidade  de Brasilia"))
+    corpo.append(p("AGRADECIMENTOS", '<w:jc w:val="center"/>'))
+    # texto corrido do pre-textual, sem recuo e a esquerda: ganha o do corpo
+    corpo.append(p("Agradeco a quem leu este trabalho.",
+                   '<w:ind w:firstLine="0"/><w:jc w:val="left"/>'))
     corpo.append(p("RESUMO", '<w:jc w:val="center"/>'))
     corpo.append(p("Texto do resumo.", '<w:jc w:val="both"/>'))
     # Vazio autofechado que sobrevive: nao esta na capa nem antes de titulo. Sem
@@ -182,8 +190,17 @@ def desenhar(caminho):
                        '<w:jc w:val="both"/><w:ind w:firstLine="709"/>'
                        '<w:spacing w:line="360" w:lineRule="auto"/>'))
         if k == 1:
-            # vazio entre dois paragrafos de corpo: vira espaco depois
+            # vazio depois de paragrafo de corpo, que tem recuo: sai
             corpo.append(p(""))
+    # texto colado da web, no estilo msonormal: passa ao Normal
+    corpo.append(p("Paragrafo colado da web, em msonormal.",
+                   '<w:pStyle w:val="msonormal0"/>'))
+    # o corpo com lista desligada e o recuo escrito a mao: o Word zeraria o
+    # recuo se a lista ficasse e o recuo saisse
+    corpo.append(p("Paragrafo de corpo com lista desligada.",
+                   '<w:numPr><w:ilvl w:val="1"/><w:numId w:val="0"/></w:numPr>'
+                   '<w:spacing w:line="360" w:lineRule="auto"/>'
+                   '<w:ind w:firstLine="709"/><w:jc w:val="both"/>'))
     corpo.append(p("Paragrafo  com  espaco  duplo, no corpo."))
     corpo.append(p("METODOLOGIA DE ANALISE"))
     corpo.append(p("Paragrafo empurrado para baixo com espaco posto a mao.",
@@ -213,6 +230,8 @@ def desenhar(caminho):
     corpo.append(p("2.2. Segunda parte", '<w:jc w:val="left"/>'))
     # Titulo de terceiro nivel, que tem de virar Titulo 3.
     corpo.append(p("2.2.1 Terceiro nivel", '<w:jc w:val="left"/>'))
+    # Titulo de quarto nivel: com a numeracao automatica, passa a letra.
+    corpo.append(p("2.2.1.1 Quarto nivel", '<w:pStyle w:val="Ttulo4"/>'))
     corpo.append('<w:p><w:pPr><w:ind w:left="2268"/></w:pPr><w:r><w:rPr>'
                  '<w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
                  '<w:t>Citacao longa recuada, de mais de tres linhas.</w:t></w:r></w:p>')
@@ -267,6 +286,214 @@ class Placar:
                                   if esperado else obtido))
 
 
+def sem_a_regra(origem, tmp, trecho, troca, estilos=False, destino_de=None):
+    """Formata com uma copia do programa em que `trecho` virou `troca`, e
+    devolve o document.xml (ou o styles.xml). O trecho tem de existir uma vez so."""
+    fonte = Path(F.__file__).read_text(encoding="utf-8")
+    assert fonte.count(trecho) == 1, "trecho do controle nao casa: %r" % trecho[:50]
+    import types
+    G = types.ModuleType("F_sem_regra")
+    G.__file__ = F.__file__
+    exec(compile(fonte.replace(trecho, troca), F.__file__, "exec"), G.__dict__)
+    G.NORMA["numero_de_titulo"]["automatica"] = False
+    destino = tmp / "sem-regra.docx"
+    G.formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Roman")
+    if destino_de:
+        return destino
+    return O.ler(destino)["word/styles.xml" if estilos else "word/document.xml"]
+
+
+def com_lista_do_word(origem, tmp, desfazer=False):
+    """O trabalho em que um titulo ja e numerado pelo Word e outro tem o numero
+    digitado. Devolve (numeracao automatica ligada?, o titulo manteve a lista?)."""
+    import types
+    fonte = Path(F.__file__).read_text(encoding="utf-8")
+    if desfazer:
+        trecho = "\n                    and not any(numera_pelo_word(f) for f in titulos_))"
+        assert fonte.count(trecho) == 1
+        fonte = fonte.replace(trecho, ")")
+    G = types.ModuleType("F_lista_word")
+    G.__file__ = F.__file__
+    exec(compile(fonte, F.__file__, "exec"), G.__dict__)
+    G.NORMA["numero_de_titulo"]["automatica"] = True
+    d = O.ler(origem)["word/document.xml"]
+    alvo = b'<w:t xml:space="preserve">2.2. Segunda parte</w:t>'
+    i = d.index(alvo)
+    a = d.rindex(b"<w:p>", 0, i)
+    d = d[:a] + (b'<w:p><w:pPr><w:pStyle w:val="Ttulo2"/>'
+                 b'<w:numPr><w:ilvl w:val="1"/><w:numId w:val="7"/></w:numPr>'
+                 b'</w:pPr><w:r><w:t xml:space="preserve">Segunda parte</w:t></w:r></w:p>') \
+        + d[d.index(b"</w:p>", i) + len(b"</w:p>"):]
+    fonte_docx = tmp / "lista-do-word.docx"
+    with zipfile.ZipFile(origem) as zi, \
+            zipfile.ZipFile(fonte_docx, "w", zipfile.ZIP_DEFLATED) as zo:
+        for info in zi.infolist():
+            zo.writestr(info, d if info.filename == "word/document.xml"
+                        else zi.read(info.filename))
+    saida = tmp / "lista-do-word-formatado.docx"
+    res = G.formatar(fonte_docx, saida, corpo_pt=13.0, entrelinha=1.3,
+                     fonte="Times New Roman")
+    novo = O.ler(saida)["word/document.xml"]
+    seg = next((novo[a:b] for a, b in O.paragrafos(novo)
+                if O.texto(novo[a:b]).strip() == "Segunda parte"), b"")
+    return res["numeracao_auto"], b'<w:numId w:val="7"/>' in seg
+
+
+def variante_de_numero(origem, tmp, nome, refs=b"", cabecalho=None, rodape=None):
+    """O arquivo de teste com a secao final apontando para `refs`; `cabecalho`
+    troca o header1.xml, e `rodape`, se dado, entra como footer1.xml."""
+    saida = tmp / ("numero-%s.docx" % nome)
+    with zipfile.ZipFile(origem) as zi, zipfile.ZipFile(saida, "w", zipfile.ZIP_DEFLATED) as zo:
+        for info in zi.infolist():
+            dados = zi.read(info.filename)
+            if info.filename == "word/document.xml":
+                k = dados.rindex(b"<w:sectPr>") + len(b"<w:sectPr>")
+                dados = dados[:k] + refs + dados[k:]
+            elif info.filename == "word/header1.xml" and cabecalho is not None:
+                dados = cabecalho
+            elif info.filename == "word/_rels/document.xml.rels" and rodape is not None:
+                dados = dados.replace(b"</Relationships>", (
+                    b'<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/'
+                    b'officeDocument/2006/relationships/footer" Target="footer1.xml"/>'
+                    b"</Relationships>"))
+            zo.writestr(info, dados)
+        if rodape is not None:
+            zo.writestr("word/footer1.xml", rodape)
+    return saida
+
+
+def numero_na_parte_textual(destino):
+    """(a secao final mostra numero, o pre-textual nao mostra, partes novas)"""
+    with zipfile.ZipFile(destino) as zz:
+        nomes = zz.namelist()
+        doc = zz.read("word/document.xml")
+        rels = zz.read("word/_rels/document.xml.rels").decode()
+        partes = {n: zz.read(n) for n in nomes if n.startswith("word/")}
+    alvo = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', rels))
+    secs = re.findall(rb"<w:sectPr\b.*?</w:sectPr>", doc, re.S)
+
+    def mostra(sp):
+        ids = re.findall(rb'<w:(?:header|footer)Reference w:type="default" r:id="([^"]+)"', sp)
+        return any(b"PAGE" in partes.get("word/" + alvo.get(i.decode(), ""), b"") for i in ids)
+    return mostra(secs[-1]), not mostra(secs[0]), "word/header-numero.xml" in nomes
+
+
+def como_esta(destino):
+    """As exigencias da norma como esta, sobre um arquivo formatado: cabecalho
+    so com o numero de pagina, e titulo com dois-pontos inteiro."""
+    with zipfile.ZipFile(destino) as zz:
+        cabs = [zz.read(n) for n in zz.namelist() if re.match(r"word/header\d*\.xml$", n)]
+        conf = zz.read("word/settings.xml")
+    doc = O.ler(destino)["word/document.xml"]
+    com_page = [c for c in cabs if b"PAGE" in c]
+    par = next((c[a:b] for c in com_page for a, b in O.paragrafos(c) if b"PAGE" in c[a:b]), b"")
+    textos = [O.texto(doc[a:b]).strip() for a, b in O.paragrafos(doc)]
+    return [
+        ("o cabecalho traz so o numero de pagina, sem titulo",
+         bool(com_page) and not any(b"STYLEREF" in c for c in cabs),
+         "com STYLEREF" if any(b"STYLEREF" in c for c in cabs) else "so PAGE"),
+        ("...a direita e no estilo Cabealho, que da o italico",
+         O.estilo_de(par) == "Cabealho" and b'<w:jc w:val="right"/>' in O.ppr(par),
+         "%s, %s" % (O.estilo_de(par), O.atributo(O.ppr(par), b"<w:jc", b"w:val"))),
+        ("sem hifenizacao: ela so vai na versao de impressao",
+         b'<w:autoHyphenation w:val="true"/>' not in conf,
+         "ligada" if b'<w:autoHyphenation w:val="true"/>' in conf else "desligada"),
+        ("o titulo com dois-pontos fica inteiro",
+         any(t.endswith("DESENVOLVIMENTO: o que explica o capitulo") for t in textos),
+         [t for t in textos if "DESENVOLVIMENTO" in t][:2]),
+    ]
+
+
+def numeracao_automatica(origem, tmp, pular=None):
+    """Formata com a numeracao automatica e devolve as exigencias, sem julgar.
+
+    `pular` desfaz uma peca do programa, para o controle positivo.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("F_num", F.__file__)
+    G = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(G)
+    G.NORMA["numero_de_titulo"]["automatica"] = True
+    G.NORMA["cabecalho"]["titulo_no_cabecalho"] = True
+    G.NORMA["cabecalho"]["dividir_no_dois_pontos"] = True
+    if pular == "com_lista":
+        G.com_lista = lambda x, a, l: x or (b'<?xml version="1.0" encoding="UTF-8" '
+                                            b'standalone="yes"?><w:numbering xmlns:w="http://'
+                                            b'schemas.openxmlformats.org/wordprocessingml/'
+                                            b'2006/main"></w:numbering>')
+    if pular == "titulo_no_cabecalho":
+        sem_numero = G.titulo_no_cabecalho
+        G.titulo_no_cabecalho = lambda x, larg, com_numero=False: sem_numero(x, larg)
+    if pular == "com_numpr":
+        G.com_numpr = lambda pp, ilvl, n: G.sem_numpr(pp)
+    destino = tmp / ("auto-%s.docx" % (pular or "inteiro"))
+    res = G.formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3,
+                     fonte="Times New Roman")
+    with zipfile.ZipFile(destino) as zz:
+        nomes = zz.namelist()
+        doc = zz.read("word/document.xml")
+        est = zz.read("word/styles.xml")
+        num = zz.read("word/numbering.xml") if "word/numbering.xml" in nomes else b""
+        rels = zz.read("word/_rels/document.xml.rels")
+        ct = zz.read("[Content_Types].xml")
+        hdr = zz.read("word/header1.xml")
+    defs = O.estilos_definidos(est)
+    nid = res.get("num_id")
+    pars = [doc[a:b] for a, b in O.paragrafos(doc)]
+    por_texto = {O.texto(x).strip(): x for x in pars}
+    out = []
+
+    tits = {"INTRODUCAO": 0, "DESENVOLVIMENTO": 0, "Primeira parte": 1,
+            "Segunda parte": 1, "Terceiro nivel": 2, "Quarto nivel": 3,
+            "REFERENCIAS": 0}
+    presentes = [t for t in tits if t in por_texto]
+    out.append(("o numero digitado sai do texto do titulo",
+                len(presentes) == len(tits)
+                and not any(re.match(r"\d", O.texto(x).strip()) for x in pars
+                            if O.estilo_de(x) and O.estilo_de(x).startswith("Ttulo")),
+                presentes, list(tits)))
+    abst = re.search(rb"<w:abstractNum .*?</w:abstractNum>", num, re.S)
+    abst = abst.group(0) if abst else b""
+    ligados = re.findall(rb'<w:pStyle w:val="(Ttulo\d)"/><w:lvlText w:val="([^"]*)"', abst)
+    out.append(("a lista de quatro niveis ligada aos estilos Titulo 1 a 4",
+                ligados == [(b"Ttulo1", b"%1"), (b"Ttulo2", b"%1.%2"),
+                            (b"Ttulo3", b"%1.%2.%3"), (b"Ttulo4", b"%4)")],
+                ligados, "Ttulo1..3 com numero, Ttulo4 com %4)"))
+    out.append(("...o Titulo 4 com letra",
+                b'<w:numFmt w:val="lowerLetter"/><w:pStyle w:val="Ttulo4"/>' in abst))
+    out.append(("...numero sem ponto, e o Titulo 1 com o recuo pendente do estilo",
+                b'<w:ind w:left="709" w:hanging="709"/></w:pPr></w:lvl><w:lvl w:ilvl="1"' in abst
+                and not re.search(rb'lvlText w:val="[^"]*\."', abst)))
+    out.append(("...e a parte existe para o Word: relacao e tipo",
+                b"relationships/numbering" in rels and b"/word/numbering.xml" in ct
+                or b'PartName="/word/numbering.xml"' in ct))
+    faltam = [sid for sid in ("Ttulo1", "Ttulo2", "Ttulo3", "Ttulo4")
+              if b'<w:numId w:val="%d"/>' % (nid or -1) not in defs.get(sid, {}).get("xml", b"")]
+    out.append(("os estilos Titulo 1 a 4 levam a lista", not faltam, faltam, "nenhum"))
+    t4 = defs.get("Ttulo4", {}).get("xml", b"")
+    out.append(("...com o numPr antes do spacing, na ordem do esquema",
+                0 <= t4.find(b"<w:numPr>") < t4.find(b"<w:spacing")))
+    errados = []
+    for t, k in tits.items():
+        x = por_texto.get(t, b"")
+        m = re.search(rb'<w:numPr><w:ilvl w:val="(\d)"/><w:numId w:val="(\d+)"/>', O.ppr(x))
+        if not m or int(m.group(1)) != k or int(m.group(2)) != nid:
+            errados.append(t)
+    out.append(("os titulos numerados levam a lista, no nivel certo", not errados, errados, "nenhum"))
+    sem = [t for t in ("APENDICES",) if b'<w:numId w:val="0"/>' not in O.ppr(por_texto.get(t, b""))]
+    out.append(("o titulo que nao tinha numero leva a lista desligada", not sem, sem, "nenhum"))
+    sub = por_texto.get("o que explica o capitulo", b"")
+    out.append(("o subtitulo nao e numerado", bool(sub) and b"<w:numPr>" not in sub))
+    out.append(("o cabecalho traz o numero do capitulo pelo campo",
+                rb"STYLEREF 1 \n" in hdr, "presente" if rb"STYLEREF 1 \n" in hdr else "ausente"))
+    out.append(("a conferencia passa com os numeros tirados",
+                not G.conferir(res, destino), "; ".join(G.conferir(res, destino))[:60] or "nada"))
+    out.append(("o relatorio avisa so o titulo cujo numero muda: o de quarto nivel",
+                [(a, b) for _, a, b in res.get("avisos_numero", [])] == [("2.2.1.1", "a)")],
+                res.get("avisos_numero"), "[('2.2.1.1', 'a)')]"))
+    return out
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -280,8 +507,21 @@ def main():
     print("CONTROLE POSITIVO DE formatar.py")
     print("  .docx de teste desenhado em %s" % tmp)
     print()
+    # A primeira metade exercita o numero digitado, que ganha tabulacao; a
+    # numeracao automatica tem a sua parte adiante, sobre o mesmo arquivo.
+    # Ela tambem liga o titulo no cabecalho e a divisao no dois-pontos, que a
+    # norma desligou: o codigo continua, e so se sabe que funciona exercitando.
+    # A norma como esta tem a sua parte, adiante.
+    F.NORMA["numero_de_titulo"]["automatica"] = False
+    F.NORMA["cabecalho"]["titulo_no_cabecalho"] = True
+    F.NORMA["cabecalho"]["dividir_no_dois_pontos"] = True
+    F.NORMA["hifenizar"] = True
     res = F.formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3,
                      fonte="Times New Roman")
+    F.NORMA["hifenizar"] = False
+    F.NORMA["numero_de_titulo"]["automatica"] = True
+    F.NORMA["cabecalho"]["titulo_no_cabecalho"] = False
+    F.NORMA["cabecalho"]["dividir_no_dois_pontos"] = False
     z = Placar()
 
     novo = O.ler(destino)
@@ -492,22 +732,34 @@ def main():
     z.exigir("Normal: justificado", b'<w:jc w:val="both"/>' in n)
 
     t1 = defs["Ttulo1"]["xml"]
-    z.exigir("Titulo 1: centralizado", b'<w:jc w:val="center"/>' in t1)
+    z.exigir("Titulo 1: a esquerda (NBR 6024, 4.1, c)", b'<w:jc w:val="left"/>' in t1,
+             O.atributo(t1, b"<w:jc", b"w:val"), "left")
+    z.exigir("Titulo 1: entrelinha simples, como todos os titulos",
+             all(b'w:line="240"' in defs.get(sid, {}).get("xml", b"")
+                 for sid in ("Ttulo0", "Ttulo1", "Ttulo2", "Ttulo3", "SubtituloCapitulo")),
+             [(sid, O.atributo(defs.get(sid, {}).get("xml", b""), b"<w:spacing", b"w:line"))
+              for sid in ("Ttulo0", "Ttulo1", "Ttulo2", "Ttulo3", "SubtituloCapitulo")],
+             "240 em todos")
     z.exigir("Titulo 1: corpo 16", b'<w:sz w:val="32"/>' in t1,
              O.atributo(t1, b"<w:sz", b"w:val"), "32")
     z.exigir("Titulo 1: negrito", b"<w:b/>" in t1)
-    z.exigir("Titulo 1: no alto da mancha, 24 pt depois",
-             b'w:before="0"' in t1 and b'w:after="480"' in t1,
+    z.exigir("Titulo 1: no alto da mancha, 36 pt depois",
+             b'w:before="0"' in t1 and b'w:after="720"' in t1,
              "before=%s after=%s" % (O.atributo(t1, b"<w:spacing", b"w:before"),
                                      O.atributo(t1, b"<w:spacing", b"w:after")),
-             "0 e 480")
-    z.exigir("Titulo 1: parada de 0,5 cm para o vao entre numero e titulo",
-             b'<w:tab w:val="left" w:pos="283"/>' in t1
-             or b'<w:tab w:val="left" w:pos="284"/>' in t1,
-             O.atributo(t1, b"<w:tab", b"w:pos"), "283 ou 284")
+             "0 e 720")
+    z.exigir("Titulo 1: parada de 1,25 cm, a coluna do titulo depois do numero",
+             b'<w:tab w:val="left" w:pos="709"/>' in t1,
+             O.atributo(t1, b"<w:tab", b"w:pos"), "709")
     z.exigir("Titulo 1: quebra pagina antes", b"<w:pageBreakBefore/>" in t1)
-    z.exigir("Titulo 1: sem recuo de primeira linha",
-             b'<w:ind w:firstLine="0"/>' in t1)
+    z.exigir("Titulo 1: recuo pendente de 1,25 cm, o do corpo",
+             b'<w:ind w:left="709" w:hanging="709"/>' in t1,
+             str(O.prop(O.ppr(t1) if b"<w:p>" in t1 else t1, b"w:ind")), "left 709 hanging 709")
+    apx = next((doc[a:b] for a, b in pars if O.texto(doc[a:b]).strip() == "APENDICES"), b"")
+    z.exigir("o Titulo 1 sem numero fica no centro e sem recuo (NBR 14724, 5.2.3)",
+             b'<w:jc w:val="center"/>' in O.ppr(apx)
+             and b'<w:ind w:left="0" w:firstLine="0"/>' in O.ppr(apx),
+             O.ppr(apx)[:90], "jc center, ind 0")
     z.exigir("Titulo 1: sem hifenizacao", b"<w:suppressAutoHyphens/>" in t1)
 
     t0 = defs["Ttulo0"]["xml"]
@@ -517,8 +769,11 @@ def main():
         y = y.group(1) if y else b""
         # A parada do Titulo 1 e do numero, e o Titulo 0 nao tem numero.
         y = _re.sub(rb"<w:tabs>.*?</w:tabs>", b"", y, flags=_re.S)
+        # E o alinhamento e o recuo: o Titulo 0, sem numero, fica no centro.
+        y = _re.sub(rb"<w:jc [^>]*/>|<w:ind [^>]*/>", b"", y)
         return _re.sub(rb'<w:outlineLvl w:val="\d"/>', b"", y)
-    z.exigir("Titulo 0: forma identica a do Titulo 1", forma(t0) == forma(t1),
+    z.exigir("Titulo 0: centralizado", b'<w:jc w:val="center"/>' in t0)
+    z.exigir("Titulo 0: no mais, a forma do Titulo 1", forma(t0) == forma(t1),
              "iguais" if forma(t0) == forma(t1) else "diferentes")
     z.exigir("Titulo 0: fora do sumario (outlineLvl 9)",
              b'<w:outlineLvl w:val="9"/>' in t0,
@@ -533,12 +788,16 @@ def main():
     z.exigir("o titulo perde a lista desligada, que desfaz o recuo pendente",
              bool(t21) and b"<w:numPr>" not in O.ppr(t21))
     z.exigir("Titulo 2: parada explicita na coluna do titulo",
-             b'<w:tab w:val="left" w:pos="510"/>' in t2,
-             O.atributo(t2, b"<w:tab", b"w:pos"), "510")
-    z.exigir("Titulo 2: recuo pendente de 0,9 cm e sem hifenizacao",
-             b'<w:ind w:left="510" w:hanging="510"/>' in t2
+             b'<w:tab w:val="left" w:pos="709"/>' in t2,
+             O.atributo(t2, b"<w:tab", b"w:pos"), "709")
+    z.exigir("Titulo 2: 18 pt antes e 12 pt depois",
+             b'w:before="360"' in t2 and b'w:after="240"' in t2,
+             "before=%s after=%s" % (O.atributo(t2, b"<w:spacing", b"w:before"),
+                                     O.atributo(t2, b"<w:spacing", b"w:after")), "360 e 240")
+    z.exigir("Titulo 2: recuo pendente de 1,25 cm e sem hifenizacao",
+             b'<w:ind w:left="709" w:hanging="709"/>' in t2
              and b"<w:suppressAutoHyphens/>" in t2,
-             str(O.prop(t2, b"w:ind")), "left 510 hanging 510")
+             str(O.prop(t2, b"w:ind")), "left 709 hanging 709")
 
     ct = defs["Citao"]["xml"]
     z.exigir("Citacao: um ponto menor que o corpo", b'<w:sz w:val="24"/>' in ct,
@@ -755,9 +1014,10 @@ def main():
              O.estilo_de(_p_num) == "Cabealho", O.estilo_de(_p_num), "Cabealho")
 
     secs = re.findall(rb"<w:sectPr\b.*?</w:sectPr>", doc, re.S)
-    z.exigir("o numero de pagina a 2 cm da borda superior",
-             all(b'w:header="1134"' in x for x in secs),
-             [O.atributo(x, b"<w:pgMar", b"w:header") for x in secs], "1134 em todas")
+    # 3,3 cm sao 1871 twips; a linha de 10 pt ocupa 230: o alto dela a 820.
+    z.exigir("a linha do numero de pagina no meio da margem superior",
+             all(b'w:header="820"' in x for x in secs),
+             [O.atributo(x, b"<w:pgMar", b"w:header") for x in secs], "820 em todas")
     z.exigir("a capa e a folha 0: a contagem comeca na folha de rosto",
              b'<w:pgNumType w:start="0"/>' in secs[0], O.atributo(secs[0], b"<w:pgNumType", b"w:start"), "0")
 
@@ -848,10 +1108,42 @@ def main():
     i1 = textos_.index("Paragrafo de corpo numero 1, com texto suficiente.")
     p1 = doc[pars[i1][0]:pars[i1][1]]
     esp1 = O.atributo(O.prop(O.ppr(p1), b"w:spacing") or b"", b"<w:spacing", b"w:after")
-    z.exigir("6. vazio entre paragrafos vira espaco depois do anterior",
-             textos_[i1 + 1].startswith("Paragrafo de corpo numero 2")
-             and esp1 is not None and int(esp1) >= 400,
-             "seguinte: %r, after=%s" % (textos_[i1 + 1][:28], esp1), "numero 2, after >= 400")
+    z.exigir("6. vazio depois de paragrafo de corpo sai, sem virar espaco",
+             textos_[i1 + 1].startswith("Paragrafo de corpo numero 2") and esp1 is None,
+             "seguinte: %r, after=%s" % (textos_[i1 + 1][:28], esp1), "numero 2, after None")
+    pl = next((doc[a:b] for a, b in pars
+               if O.texto(doc[a:b]).strip() == "Paragrafo de corpo com lista desligada."), b"")
+    z.exigir("o corpo perde a lista desligada junto com o recuo escrito",
+             bool(pl) and b"<w:numPr>" not in O.ppr(pl) and b"<w:ind" not in O.ppr(pl),
+             O.ppr(pl)[:80], "sem numPr e sem ind")
+    amostra = (b'<w:p><w:pPr><w:spacing w:before="0" w:after="480"/></w:pPr><w:r><w:rPr>'
+               b'<w:spacing w:val="15"/></w:rPr><w:t>2.1 Titulo</w:t></w:r></w:p>')
+    limpa = F.sem_espacejamento(amostra)
+    z.exigir("o titulo perde o espacejamento de letras escrito na corrida",
+             b'w:val="15"' not in limpa)
+    z.exigir("...e o espacamento do paragrafo fica",
+             b'<w:spacing w:before="0" w:after="480"/>' in limpa)
+    # Controle positivo das duas regras: desfeitas numa copia do programa,
+    # cada exigencia tem de reprovar.
+    dl = sem_a_regra(origem, tmp, "                pc = sem_numpr(pc)", "                pass")
+    pl2 = next((dl[a:b] for a, b in O.paragrafos(dl)
+                if O.texto(dl[a:b]).strip() == "Paragrafo de corpo com lista desligada."), b"")
+    z.exigir("controle: sem a regra, a lista desligada fica", b"<w:numPr>" in O.ppr(pl2))
+    dc = sem_a_regra(origem, tmp, "                    and not numera_pelo_word(f)):",
+                     "                    and False):")
+    apx2 = next((dc[a:b] for a, b in O.paragrafos(dc)
+                 if O.texto(dc[a:b]).strip() == "APENDICES"), b"")
+    z.exigir("controle: sem a regra, o titulo sem numero nao vai ao centro",
+             b'<w:jc w:val="center"/>' not in O.ppr(apx2))
+    e_ent = sem_a_regra(origem, tmp, 'linha_tit = int(round(240 * NORMA["titulos_entrelinha"]))',
+                        "linha_tit = linha", estilos=True)
+    z.exigir("controle: sem a regra, o Titulo 1 volta a entrelinha do corpo",
+             b'w:line="240"' not in O.estilos_definidos(e_ent)["Ttulo1"]["xml"])
+    dv = sem_a_regra(origem, tmp, 'or pd in ENCOSTA or pa == "corpo"):', "or pd in ENCOSTA):")
+    tv = [O.texto(dv[a:b]).strip() for a, b in O.paragrafos(dv)]
+    iv = tv.index("Paragrafo de corpo numero 1, com texto suficiente.")
+    z.exigir("controle: sem a regra, o vazio depois do corpo fica", tv[iv + 1] == "",
+             repr(tv[iv + 1][:28]), "''")
     i21 = textos_.index("2.1\tPrimeira parte")
     z.exigir("6. vazio encostado em titulo sai",
              textos_[i21 + 1] == "2.2\tSegunda parte", repr(textos_[i21 + 1]), "2.2<tab>Segunda parte")
@@ -976,6 +1268,127 @@ def main():
     z.exigir("o sumario digitado saiu",
              "DESENVOLVIMENTO" not in [O.texto(doc[a:b]).strip() for a, b in pars],
              "", "")
+
+    print()
+    print("  A NUMERACAO AUTOMATICA DOS TITULOS")
+    for linha in numeracao_automatica(origem, tmp, pular=None):
+        z.exigir(*linha)
+    # Controle positivo: cada peca desfeita tem de reprovar a sua exigencia.
+    for peca, nome in (("com_lista", "a lista de quatro niveis ligada aos estilos"),
+                       ("com_numpr", "os titulos numerados levam a lista"),
+                       ("titulo_no_cabecalho", "o cabecalho traz o numero do capitulo")):
+        linhas = numeracao_automatica(origem, tmp, pular=peca)
+        caiu = [l for l in linhas if l[0].startswith(nome) and not l[1]]
+        z.exigir("controle: sem `%s`, reprova '%s'" % (peca, nome), bool(caiu))
+
+    print()
+    print("  A NORMA COMO ESTA: so o numero no cabecalho, titulo inteiro")
+    padrao = tmp / "como-esta.docx"
+    F.formatar(origem, padrao, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Roman")
+    for linha in como_esta(padrao):
+        z.exigir(*linha)
+    sem_estilo = sem_a_regra(
+        origem, tmp, 'p = com_pstyle(tirar(O.ppr(bloco), b"w:jc"), "Cabealho")',
+        'p = tirar(O.ppr(bloco), b"w:jc")', destino_de=True)
+    z.exigir("controle: sem a regra, o numero de pagina fica fora do estilo Cabealho",
+             not como_esta(sem_estilo)[1][1])
+    ag = O.ler(padrao)
+    agp = next((ag["word/document.xml"][a:b] for a, b in O.paragrafos(ag["word/document.xml"])
+                if O.texto(ag["word/document.xml"][a:b]).strip().startswith("Agradeco")), b"")
+    agd = O.estilos_definidos(ag["word/styles.xml"]).get("TextoPreTextual", {}).get("xml", b"")
+    z.exigir("os agradecimentos com o recuo e o alinhamento do corpo, pelo estilo",
+             O.estilo_de(agp) == "TextoPreTextual" and b"<w:ind" not in O.ppr(agp)
+             and b'w:firstLine="709"' in agd and b'<w:jc w:val="both"/>' in agd,
+             "%s, %s" % (O.estilo_de(agp), O.ppr(agp)[:60]), "TextoPreTextual, sem ind")
+    sem_ag = sem_a_regra(origem, tmp, 'else "TextoPreTextual" if f["i"] in dos_agradecimentos',
+                         'else "PreTextual" if False')
+    agp2 = next((sem_ag[a:b] for a, b in O.paragrafos(sem_ag)
+                 if O.texto(sem_ag[a:b]).strip().startswith("Agradeco")), b"")
+    z.exigir("controle: sem a regra, os agradecimentos ficam fora do estilo",
+             O.estilo_de(agp2) != "TextoPreTextual", O.estilo_de(agp2))
+    ligado = (b'<w:settings><w:defaultTabStop w:val="708"/>'
+              b'<w:autoHyphenation w:val="true"/></w:settings>')
+    des, era = F.desligar_hifenizacao(ligado)
+    z.exigir("a hifenizacao que o autor ligou e desligada, e o relatorio sabe",
+             b"autoHyphenation" not in des and era, "%s, %s" % (des[-60:], era))
+    des2, era2 = F.desligar_hifenizacao(b'<w:settings><w:defaultTabStop w:val="708"/></w:settings>')
+    z.exigir("...e o arquivo sem ela fica como estava", not era2
+             and des2 == b'<w:settings><w:defaultTabStop w:val="708"/></w:settings>')
+
+    pm = O.ler(padrao)
+    est_m = O.estilos_definidos(pm["word/styles.xml"])
+    par_m = next((pm["word/document.xml"][a:b] for a, b in O.paragrafos(pm["word/document.xml"])
+                  if O.texto(pm["word/document.xml"][a:b]).strip().startswith("Paragrafo colado")), b"")
+    z.exigir("o paragrafo em msonormal passa ao Normal",
+             bool(par_m) and O.estilo_de(par_m) in (None, "Normal"), O.estilo_de(par_m), "Normal")
+    z.exigir("...o estilo sai do arquivo",
+             not any("msonormal" in sid.lower() for sid in est_m), [x for x in est_m if "mso" in x.lower()])
+    z.exigir("...e o estilo que se baseava nele passa a se basear no Normal",
+             b'<w:basedOn w:val="Normal"/>' in est_m.get("Derivado", {}).get("xml", b""),
+             O.atributo(est_m.get("Derivado", {}).get("xml", b""), b"<w:basedOn", b"w:val"), "Normal")
+    e_mso = sem_a_regra(origem, tmp, "    doc, est, n_mso, ids_mso = sem_msonormal(doc, est)",
+                        "    n_mso, ids_mso = 0, []", estilos=True)
+    z.exigir("controle: sem a regra, o msonormal fica",
+             "msonormal0" in O.estilos_definidos(e_mso))
+
+    print()
+    print("  O NUMERO DE PAGINA QUE FALTA")
+    # 1. a secao final sem cabecalho: herdaria o vazio do pre-textual
+    textual, pre_vazio, novo = numero_na_parte_textual(padrao)
+    z.exigir("secao sem cabecalho: ganha um cabecalho novo com o numero",
+             textual and novo, "numero=%s, parte nova=%s" % (textual, novo))
+    z.exigir("...e o pre-textual continua sem numero", pre_vazio)
+    # 2. cabecalho proprio, vazio: o numero entra nele, sem parte nova
+    v2 = variante_de_numero(origem, tmp, "vazio", b'<w:headerReference w:type="default" r:id="rId3"/>',
+                            cabecalho=b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                            b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/'
+                            b'2006/main"><w:p/><w:p/></w:hdr>')
+    F.formatar(v2, tmp / "numero-vazio-f.docx", corpo_pt=13.0, entrelinha=1.3,
+               fonte="Times New Roman")
+    t2, p2, n2 = numero_na_parte_textual(tmp / "numero-vazio-f.docx")
+    with zipfile.ZipFile(tmp / "numero-vazio-f.docx") as zz:
+        h2 = zz.read("word/header1.xml")
+    z.exigir("cabecalho proprio sem numero: o numero entra nele",
+             t2 and p2 and not n2 and h2.count(b"<w:p>") + h2.count(b"<w:p ") == 1,
+             "numero=%s, parte nova=%s, paragrafos=%d" % (t2, n2, h2.count(b"<w:p>")))
+    # 3. numero no rodape: nao falta, e nada entra
+    v3 = variante_de_numero(origem, tmp, "rodape", b'<w:footerReference w:type="default" r:id="rId9"/>',
+                            rodape=HEADER.format(ns=NS).replace("w:hdr", "w:ftr").encode())
+    F.formatar(v3, tmp / "numero-rodape-f.docx", corpo_pt=13.0, entrelinha=1.3,
+               fonte="Times New Roman")
+    t3, _, n3 = numero_na_parte_textual(tmp / "numero-rodape-f.docx")
+    z.exigir("numero no rodape: nao falta, e nenhum cabecalho novo entra",
+             t3 and not n3, "numero=%s, parte nova=%s" % (t3, n3))
+    # 4. o cabecalho ja tem o numero: nao ganha um segundo
+    v4 = variante_de_numero(origem, tmp, "com-numero",
+                            b'<w:headerReference w:type="default" r:id="rId3"/>')
+    F.formatar(v4, tmp / "numero-com-f.docx", corpo_pt=13.0, entrelinha=1.3,
+               fonte="Times New Roman")
+    with zipfile.ZipFile(tmp / "numero-com-f.docx") as zz:
+        h4 = zz.read("word/header1.xml")
+        n4 = "word/header-numero.xml" in zz.namelist()
+    z.exigir("cabecalho que ja tem o numero: nao ganha um segundo",
+             h4.count(b"PAGE") == 1 and not n4,
+             "PAGE %d vez(es), parte nova=%s" % (h4.count(b"PAGE"), n4), "1, False")
+    # controle: sem a regra, a secao do caso 1 fica sem numero
+    sem_num = sem_a_regra(origem, tmp, '"inicio": 0, "inserir_se_faltar": True',
+                          '"inicio": 0, "inserir_se_faltar": False', destino_de=True)
+    z.exigir("controle: sem a regra, a parte textual fica sem numero",
+             not numero_na_parte_textual(sem_num)[0])
+
+    # Controle: o arquivo da primeira metade, com as opcoes ligadas, reprova.
+    for nome, ok, *_ in como_esta(destino):
+        if nome.startswith("..."):
+            continue
+        z.exigir("controle: com a opcao ligada, reprova '%s'" % nome, not ok)
+
+    ligada, manteve = com_lista_do_word(origem, tmp)
+    z.exigir("com um titulo numerado pelo Word, a numeracao do autor fica",
+             not ligada and manteve, "automatica=%s, lista mantida=%s" % (ligada, manteve),
+             "automatica=False, lista mantida=True")
+    ligada2, manteve2 = com_lista_do_word(origem, tmp, desfazer=True)
+    z.exigir("controle: sem essa regra, a lista do autor se perde", ligada2 and not manteve2,
+             "automatica=%s, lista mantida=%s" % (ligada2, manteve2))
 
     print()
     print("  SEGUNDA METADE: a conferencia reprova o que tem de reprovar")

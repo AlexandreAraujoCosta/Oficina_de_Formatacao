@@ -119,6 +119,39 @@ def comparar(w, original, formatado, destino):
     return n
 
 
+def sem_msonormal_sobrando(caminho):
+    """Tira da copia com controle o estilo `msonormal` que a comparacao trouxe.
+
+    O Word monta a copia com os estilos do original, e o `msonormal` que a
+    formatacao tirou volta, sem uso, para a lista de estilos. Sai quando nenhuma
+    parte do documento o usa; estilo que se baseava nele passa ao Normal.
+    Devolve os estilos tirados.
+    """
+    import re
+    import zipfile
+    with zipfile.ZipFile(caminho) as z:
+        itens = [(i, z.read(i.filename)) for i in z.infolist()]
+    partes = dict((i.filename, d) for i, d in itens)
+    est = partes.get("word/styles.xml", b"")
+    ids = [sid for sid in re.findall(rb'w:styleId="([^"]*)"', est)
+           if re.fullmatch(rb"(?i)msonormal\d*", sid)]
+    usados = [sid for sid in ids
+              if any(b'w:val="%s"' % sid in d for n, d in partes.items()
+                     if n.startswith("word/") and n.endswith(".xml") and n != "word/styles.xml")]
+    tirar = [sid for sid in ids if sid not in usados]
+    if not tirar:
+        return []
+    for sid in tirar:
+        est = re.sub(rb'<w:style\b[^>]*w:styleId="%s"[^>]*>.*?</w:style>' % re.escape(sid),
+                     b"", est, flags=re.S)
+        est = re.sub(rb'<w:(basedOn|next) w:val="%s"/>' % re.escape(sid),
+                     rb'<w:\1 w:val="Normal"/>', est)
+    with zipfile.ZipFile(caminho, "w", zipfile.ZIP_DEFLATED) as z:
+        for info, dados in itens:
+            z.writestr(info, est if info.filename == "word/styles.xml" else dados)
+    return [x.decode() for x in tirar]
+
+
 def aceitar(w, origem, destino):
     d = w.Documents.Open(str(origem), ReadOnly=False, AddToRecentFiles=False)
     try:
@@ -159,6 +192,10 @@ def main():
                   % (n, entradas))
         n = comparar(w, orig, fmt, saida)
         print("  %d alteracoes, escritas pelo Word e assinadas por %s" % (n, AUTOR))
+        tirados = sem_msonormal_sobrando(saida)
+        if tirados:
+            print("  estilo que a comparacao trouxe do original e que nada usa, tirado: %s"
+                  % ", ".join(tirados))
         aceitar(w, saida, prova)
     finally:
         w.Quit()

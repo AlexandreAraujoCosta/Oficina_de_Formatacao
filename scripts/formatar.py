@@ -110,14 +110,22 @@ NORMA = {
     "entrelinha": 1.3,
     "normal_depois_pt": 3,
     "recuo_primeira_cm": 1.25,
-    "hifenizar": True,
+    # A hifenizacao e a ultima providencia, so na versao final de impressao
+    # (`--impressao`), por decisao da coordenacao: no arquivo de trabalho ela
+    # fica desligada, mesmo que o autor a tenha ligado.
+    "hifenizar": False,
     "hifens_seguidos": 2,       # linhas seguidas que podem terminar em hifen
     "margens_cm": {"esq": 3.3, "dir": 3.3, "sup": 3.3, "inf": 2.5},
     # Antes 0: a NBR 14724 (5.2.2) quer o titulo da secao primaria no alto da
     # mancha.
-    "titulo1": {"corpo_pt": 16, "antes_pt": 0, "depois_pt": 24,
-                "centralizado": True, "quebra_pagina": True},
-    "titulo2": {"antes_pt": 18, "depois_pt": 9},
+    # A esquerda, como o Titulo 2 (NBR 6024, 4.1, alinea c). O que nao tem
+    # numero, como REFERENCIAS e APENDICES, fica centralizado (NBR 14724,
+    # 5.2.3; NBR 6024, 4.1, alinea h).
+    "titulo1": {"corpo_pt": 16, "antes_pt": 0, "depois_pt": 36,
+                "centralizado": False, "quebra_pagina": True},
+    # Todos os titulos em entrelinha simples, por decisao da coordenacao.
+    "titulos_entrelinha": 1.0,
+    "titulo2": {"antes_pt": 18, "depois_pt": 12},
     "numero_de_titulo": {
         # A NBR 6024:2012 (4.1, alinea d) nao admite sinal entre o indicativo e
         # o titulo.
@@ -130,8 +138,18 @@ NORMA = {
         # cabecalho corrente o titulo e empurrado para a parada do numero de
         # pagina.
         "tabulacao": True,
-        "parada_t1_cm": 0.5,            # titulo centralizado: o vao, e nao a coluna
-        "pendente_cm": {2: 0.9, 3: 1.3},    # a coluna do titulo, por nivel
+        "parada_t1_cm": 0.5,            # o vao do numero no cabecalho corrente
+        # A coluna do titulo, em todos os niveis, e a do recuo de primeira linha
+        # do corpo: o numero fica na margem e o titulo comeca onde comeca o
+        # paragrafo recuado, por decisao da coordenacao.
+        "pendente_cm": {1: 1.25, 2: 1.25, 3: 1.25, 4: 1.25},
+        # O numero digitado sai e o Word passa a numerar, por uma lista ligada
+        # aos estilos Titulo 1 a 4: acrescentar ou tirar um titulo renumera o
+        # resto sozinho. A numeracao progressiva vai ate o Titulo 3; o Titulo 4
+        # leva so uma letra, "a)", que recomeca a cada Titulo 3, por decisao da
+        # coordenacao (a forma e a da alinea, NBR 6024, 4.2). Trabalho que ja numera pelo Word fica com a
+        # numeracao dele.
+        "automatica": True,
     },
     "citacao": {"menor_pt": 1, "recuo_esq_cm": 2.5,
                 "antes_pt": 12, "depois_pt": 12},
@@ -161,21 +179,29 @@ NORMA = {
     # iniciais minusculas salvo nome proprio.
     "palavras_chave_abnt": True,
     # A contagem comeca na folha de rosto (NBR 14724, 5.3): a capa e a folha 0.
-    "numeracao": {"mostra_do_textual": True, "inicio": 0},
+    # O trabalho sem numero de pagina na parte textual ganha o numero no
+    # cabecalho (NBR 14724, 5.3).
+    "numeracao": {"mostra_do_textual": True, "inicio": 0, "inserir_se_faltar": True},
     "cabecalho": {
         # O titulo de capitulo e curto, e o que explica desce para o subtitulo.
         # Com isso o cabecalho corrente le o titulo VIVO, pelo campo STYLEREF, e
         # nao uma copia que envelhece quando o autor edita.
-        "titulo_no_cabecalho": True,
-        "dividir_no_dois_pontos": True,
+        # Desligados por decisao da coordenacao: o cabecalho traz so o numero
+        # de pagina, e o titulo longo e o autor que encurta. O codigo fica, e o
+        # controle o exercita ligado.
+        "titulo_no_cabecalho": False,
+        "dividir_no_dois_pontos": False,
         # Titulo corrente e numero de pagina em 10 pt, por decisao da
         # coordenacao. O titulo divide a linha com o numero, e num corpo maior
         # um titulo longo dobra para duas linhas.
         "corpo_pt": 10,
-        # O numero fica a 2 cm da borda superior (NBR 14724, 5.3). A distancia da
+        # Em italico, titulo e numero, por decisao da coordenacao.
+        "italico": True,
+        # A linha do numero fica no meio da margem superior, por decisao da
+        # coordenacao (a NBR 14724, 5.3, a poe a 2 cm da borda). A distancia da
         # borda direita continua a da margem, para que o numero e o titulo
         # corrente fiquem na coluna do texto.
-        "distancia_da_borda_cm": 2.0,
+        "no_meio_da_margem": True,
     },
     "pretextual": {
         "segue_o_normal": True,      # o corpo e o do texto, e nao o antigo
@@ -436,15 +462,55 @@ def congelar(bloco, do_ppr, do_rpr):
     return bloco
 
 
+def distancia_do_cabecalho(sup_cm):
+    """Da borda ao alto da linha do cabecalho, para que o meio dela caia no meio
+    da margem superior."""
+    linha = int(round(NORMA["cabecalho"]["corpo_pt"] * FOLGA_DE_LINHA * PT))
+    return (tw(sup_cm) - linha) // 2
+
+
 def escrever_margens(doc, margens_cm):
     """Troca o pgMar de toda secao. Nao mexe no tamanho do papel."""
     novo = (b'<w:pgMar w:top="%d" w:right="%d" w:bottom="%d" w:left="%d" '
             b'w:header="%d" w:footer="708" w:gutter="0"/>'
             % (tw(margens_cm["sup"]), tw(margens_cm["dir"]),
                tw(margens_cm["inf"]), tw(margens_cm["esq"]),
-               tw(NORMA["cabecalho"]["distancia_da_borda_cm"])))
+               distancia_do_cabecalho(margens_cm["sup"])))
     doc, n = re.subn(rb"<w:pgMar[^>]*/>", novo, doc)
     return doc, n
+
+
+def desligar_hifenizacao(settings_xml):
+    """Desliga a hifenizacao do documento, se o arquivo a trazia ligada."""
+    if settings_xml is None:
+        return None, False
+    m = re.search(rb'<w:autoHyphenation(?:\s[^>]*)?/>', settings_xml)
+    if not m:
+        return settings_xml, False
+    ligada = not re.search(rb'w:val="(?:false|0|off)"', m.group(0))
+    return settings_xml[:m.start()] + settings_xml[m.end():], ligada
+
+
+def sem_msonormal(doc, est):
+    """O estilo `msonormal`, que o Word cria quando se cola texto de pagina da
+    web ou de e-mail, passa ao Normal: o paragrafo que o usa perde o estilo, e o
+    estilo sai do arquivo. Estilo que se baseava nele passa a se basear no
+    Normal. Devolve o documento, os estilos e quantos paragrafos o usavam."""
+    ids = [sid for sid, x in O.estilos_definidos(est).items()
+           if re.fullmatch(r"(?i)msonormal\d*", sid)
+           or re.fullmatch(r"(?i)msonormal\d*", x.get("nome") or "")]
+    n = 0
+    for sid in ids:
+        b_sid = sid.encode()
+        doc, k = re.subn(rb'<w:pStyle w:val="%s"/>' % re.escape(b_sid), b"", doc)
+        n += k
+        est = re.sub(rb'<w:style\b[^>]*w:styleId="%s"[^>]*>.*?</w:style>' % re.escape(b_sid),
+                     b"", est, flags=re.S)
+        est = re.sub(rb'<w:(basedOn|next) w:val="%s"/>' % re.escape(b_sid),
+                     rb'<w:\1 w:val="Normal"/>', est)
+    # O pPr que so tinha o estilo fica vazio, e sai.
+    doc = doc.replace(b"<w:pPr></w:pPr>", b"")
+    return doc, est, n, ids
 
 
 def ligar_hifenizacao(settings_xml):
@@ -474,7 +540,7 @@ def ligar_hifenizacao(settings_xml):
     return settings_xml, False
 
 
-def titulo_no_cabecalho(parte_xml, largura_tw):
+def titulo_no_cabecalho(parte_xml, largura_tw, com_numero=False):
     """Poe o titulo do capitulo a esquerda do numero de pagina, no cabecalho.
 
     O campo e `STYLEREF 1`, que le o paragrafo em estilo Titulo 1 daquela pagina,
@@ -522,13 +588,28 @@ def titulo_no_cabecalho(parte_xml, largura_tw):
     m = re.search(rb"<w:r(?:\s[^>]*)?>", bloco)
     if not m:
         return parte_xml, False
-    campo = (b'<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
-             b'<w:r><w:instrText xml:space="preserve"> STYLEREF 1 '
-             rb"\* MERGEFORMAT </w:instrText></w:r>"
-             b'<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
-             b"<w:r><w:t> </w:t></w:r>"
-             b'<w:r><w:fldChar w:fldCharType="end"/></w:r>'
-             b"<w:r><w:tab/></w:r>")
+    def styleref(chave):
+        return (b'<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+                b'<w:r><w:instrText xml:space="preserve"> STYLEREF 1 ' + chave
+                + rb"\* MERGEFORMAT </w:instrText></w:r>"
+                b'<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+                b"<w:r><w:t> </w:t></w:r>"
+                b'<w:r><w:fldChar w:fldCharType="end"/></w:r>')
+    def instr(texto):
+        return b'<w:r><w:instrText xml:space="preserve">' + texto + b"</w:instrText></w:r>"
+
+    # Com a numeracao automatica, o numero do capitulo nao e texto do titulo, e
+    # o STYLEREF simples o perde: `\n` traz o numero da lista. No capitulo sem
+    # numero (REFERENCIAS, APENDICES), porem, `\n` devolve "0", e o cabecalho
+    # sairia "0 REFERENCIAS": o IF so poe o numero, e a tabulacao dele, quando
+    # ele nao e 0.
+    numero = (b'<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+              + instr(b' IF "') + styleref(rb"\n ") + instr(b'" = "0" "" "')
+              + styleref(rb"\n ") + b"<w:r><w:tab/></w:r>" + instr(b'" ')
+              + b'<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+              b"<w:r><w:t> </w:t></w:r>"
+              b'<w:r><w:fldChar w:fldCharType="end"/></w:r>')
+    campo = (numero if com_numero else b"") + styleref(b"") + b"<w:r><w:tab/></w:r>"
     # O corpo do cabecalho vem do estilo `Cabealho`, e nao de cada corrida: o
     # resultado do campo e gerado pelo Word a cada atualizacao e nao herda o que
     # se escreveu nas corridas do campo.
@@ -538,19 +619,23 @@ def titulo_no_cabecalho(parte_xml, largura_tw):
 
 
 def numero_de_pagina_a_direita(parte_xml):
-    """Alinha a direita o paragrafo do cabecalho que carrega o campo PAGE."""
+    """Alinha a direita o paragrafo do cabecalho que carrega o campo PAGE, e o
+    poe no estilo `Cabealho`, de onde vem o corpo e o italico: o que estiver
+    escrito nas corridas sai, porque o venceria."""
     mudou = [0]
 
     def um(m):
         bloco = m.group(0)
         if not re.search(rb"PAGE", bloco):
             return bloco
-        p = O.ppr(bloco)
-        if b'<w:jc w:val="right"/>' in p:
-            return bloco
-        novo_p = tirar(p, b"w:jc") + b'<w:jc w:val="right"/>'
-        mudou[0] += 1
-        return escrever_ppr(bloco, novo_p)
+        p = com_pstyle(tirar(O.ppr(bloco), b"w:jc"), "Cabealho")
+        p = no_ppr(p, b'<w:jc w:val="right"/>',
+                   rb"textDirection|textAlignment|textboxTightWrap|outlineLvl|divId"
+                   rb"|cnfStyle|rPr|sectPr|pPrChange")
+        novo = sem_corpo_de_letra(escrever_ppr(bloco, p))
+        if novo != bloco:
+            mudou[0] += 1
+        return novo
 
     saida, pos = [], 0
     for a, b in O.paragrafos(parte_xml):
@@ -559,6 +644,109 @@ def numero_de_pagina_a_direita(parte_xml):
         pos = b
     saida.append(parte_xml[pos:])
     return b"".join(saida), mudou[0]
+
+CABECALHO_COM_NUMERO = "header-numero.xml"
+
+PARAGRAFO_DO_NUMERO = (
+    b'<w:p><w:pPr><w:pStyle w:val="Cabealho"/><w:jc w:val="right"/></w:pPr>'
+    b'<w:r><w:fldChar w:fldCharType="begin"/></w:r>'
+    b'<w:r><w:instrText xml:space="preserve"> PAGE \\* MERGEFORMAT </w:instrText></w:r>'
+    b'<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+    b"<w:r><w:t>1</w:t></w:r>"
+    b'<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>')
+
+CABECALHO_NUMERADO = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
+    b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+    + PARAGRAFO_DO_NUMERO + b"</w:hdr>")
+
+
+def com_numero_de_pagina(parte_xml):
+    """Poe o numero de pagina num cabecalho que nao o tem. Cabecalho sem nada
+    escrito nem desenhado perde os paragrafos vazios, que empurrariam o numero
+    para baixo; o que tem conteudo ganha o numero depois dele."""
+    corpo = re.search(rb"(<w:hdr\b[^>]*>)(.*)(</w:hdr>)", parte_xml, re.S)
+    if not corpo:
+        return parte_xml
+    dentro = corpo.group(2)
+    vazio = (not re.search(rb"<w:t[ >]", dentro)
+             and not re.search(rb"<w:(?:drawing|pict|object|fldChar|fldSimple)\b", dentro))
+    novo = PARAGRAFO_DO_NUMERO if vazio else dentro + PARAGRAFO_DO_NUMERO
+    return parte_xml[:corpo.start(2)] + novo + parte_xml[corpo.end(2):]
+
+
+def numero_onde_falta(doc, partes, rels_xml, id_pretextual, id_novo):
+    """Acha as secoes da parte textual que nao mostram numero de pagina, nem no
+    cabecalho nem no rodape, e decide onde ele entra.
+
+    A secao sem cabecalho proprio herda o da anterior, e a primeira da parte
+    textual herdaria o cabecalho vazio do pre-textual: ela recebe uma referencia
+    a um cabecalho novo, com o numero, e as seguintes que tambem nao tem
+    cabecalho herdam esse. A que tem cabecalho proprio sem numero recebe o
+    numero nele. Devolve o documento, as partes de cabecalho que recebem o
+    numero, se o cabecalho novo foi usado, e quantas secoes faltavam.
+    """
+    alvos = {}
+    for m in re.finditer(rb"<Relationship\b[^>]*>", rels_xml):
+        rid = re.search(rb'Id="([^"]*)"', m.group(0))
+        alvo = re.search(rb'Target="([^"]*)"', m.group(0))
+        if rid and alvo:
+            alvos[rid.group(1).decode()] = "word/" + alvo.group(1).decode().lstrip("/")
+    pares = b"<w:evenAndOddHeaders" in partes.get("word/settings.xml", b"")
+
+    def tem_numero(parte):
+        # A parte que ja recebeu o numero nesta passada tambem conta.
+        return parte is not None and (parte in receber
+                                      or parte == "word/" + CABECALHO_COM_NUMERO
+                                      or b"PAGE" in partes.get(parte, b""))
+
+    secoes = list(re.finditer(rb"<w:sectPr\b.*?</w:sectPr>", doc, re.S))
+    ultimo_pre = max((k for k, m in enumerate(secoes)
+                      if ('r:id="%s"' % id_pretextual).encode() in m.group(0)), default=None)
+    if ultimo_pre is None:
+        return doc, set(), False, 0
+    herdado = {}
+    receber, novo_usado, faltavam, inserir = set(), False, 0, []
+    for k, m in enumerate(secoes):
+        sp = m.group(0)
+        refs = {}
+        for r in re.finditer(rb'<w:(header|footer)Reference w:type="(\w+)" r:id="([^"]*)"/>', sp):
+            refs[(r.group(1).decode(), r.group(2).decode())] = alvos.get(r.group(3).decode())
+        tipos = ["default"] + (["even"] if pares else []) + (
+            ["first"] if b"<w:titlePg/>" in sp or b'<w:titlePg w:val="1"/>' in sp else [])
+        efetivo = {}
+        for t in ("default", "even", "first"):
+            for lado in ("header", "footer"):
+                if (lado, t) in refs:
+                    herdado[(lado, t)] = refs[(lado, t)]
+                efetivo[(lado, t)] = herdado.get((lado, t))
+        if k <= ultimo_pre:
+            continue
+        if any(tem_numero(efetivo[(lado, t)]) for t in tipos for lado in ("header", "footer")):
+            continue
+        faltavam += 1
+        faltam_ref = []
+        for t in tipos:
+            parte = efetivo[("header", t)]
+            proprio = ("header", t) in refs
+            if proprio and parte and parte != "word/" + CABECALHO_SEM_NUMERO:
+                receber.add(parte)
+            else:
+                faltam_ref.append(t)
+                herdado[("header", t)] = "word/" + CABECALHO_COM_NUMERO
+        if faltam_ref:
+            novo_usado = True
+            inserir.append((m, faltam_ref))
+    for m, faltam_ref in reversed(inserir):
+        sp = m.group(0)
+        for t in faltam_ref:
+            sp = re.sub(rb'<w:headerReference w:type="%s"[^>]*/>' % t.encode(), b"", sp)
+        pos = sp.find(b">") + 1
+        refs_novas = b"".join(b'<w:headerReference w:type="%s" r:id="%s"/>'
+                              % (t.encode(), id_novo.encode()) for t in faltam_ref)
+        doc = doc[:m.start()] + sp[:pos] + refs_novas + sp[pos:] + doc[m.end():]
+    return doc, receber, novo_usado, faltavam
+
 
 CABECALHO_SEM_NUMERO = "header-sem-numero.xml"
 
@@ -579,15 +767,15 @@ def proximo_rid(rels_xml):
     return "rId%d" % ((max(usados) + 1) if usados else 1)
 
 
-def com_relacionamento(rels_xml, rid, alvo):
+def com_relacionamento(rels_xml, rid, alvo, tipo=None):
     novo = ('<Relationship Id="%s" Type="%s" Target="%s"/>'
-            % (rid, TIPO_CABECALHO, alvo)).encode("utf-8")
+            % (rid, tipo or TIPO_CABECALHO, alvo)).encode("utf-8")
     return rels_xml.replace(b"</Relationships>", novo + b"</Relationships>", 1)
 
 
-def com_override(ctypes_xml, parte):
+def com_override(ctypes_xml, parte, ct=None):
     novo = ('<Override PartName="%s" ContentType="%s"/>'
-            % (parte, CT_CABECALHO)).encode("utf-8")
+            % (parte, ct or CT_CABECALHO)).encode("utf-8")
     return ctypes_xml.replace(b"</Types>", novo + b"</Types>", 1)
 
 
@@ -679,6 +867,13 @@ def sem_corpo_de_letra(bloco):
     """
     return re.sub(rb"<w:szCs(?:\s[^>]*)?/>", b"",
                   re.sub(rb"<w:sz(?:\s[^>]*)?/>", b"", bloco))
+
+
+def sem_espacejamento(bloco):
+    """Tira o espacejamento de letras escrito na corrida (`w:spacing w:val`,
+    que so existe no rPr: o do paragrafo usa before, after e line). No titulo,
+    o Word o leva para a entrada do sumario, e a linha estoura."""
+    return re.sub(rb'<w:spacing w:val="-?\d+"/>', b"", bloco)
 
 
 def altura_de_linha(corpo_pt, entrelinha=1.0):
@@ -1493,6 +1688,88 @@ def faixas_de_indice(doc):
     return faixas
 
 
+TIPO_NUMERACAO = ("http://schemas.openxmlformats.org/officeDocument/2006/"
+                  "relationships/numbering")
+CT_NUMERACAO = "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"
+SEGUEM_NUMPR = (rb"suppressLineNumbers|pBdr|shd|tabs|suppressAutoHyphens|kinsoku|wordWrap"
+                rb"|overflowPunct|topLinePunct|autoSpaceDE|autoSpaceDN|bidi|adjustRightInd"
+                rb"|snapToGrid|spacing|ind|contextualSpacing|mirrorIndents|suppressOverlap"
+                rb"|jc|textDirection|textAlignment|textboxTightWrap|outlineLvl|divId"
+                rb"|cnfStyle|rPr|sectPr|pPrChange")
+
+
+def sem_numpr(pp):
+    return re.sub(rb"<w:numPr>.*?</w:numPr>", b"", pp, flags=re.S)
+
+
+def com_numpr(pp, ilvl, num_id):
+    """O pPr com a lista pedida, no lugar que o esquema quer."""
+    return no_ppr(sem_numpr(pp), b'<w:numPr><w:ilvl w:val="%d"/><w:numId w:val="%d"/>'
+                  b"</w:numPr>" % (ilvl, num_id), SEGUEM_NUMPR)
+
+
+def ids_da_numeracao(numbering_xml):
+    """Os primeiros identificadores livres de lista abstrata e de lista."""
+    if not numbering_xml:
+        return 1, 1
+    a = [int(x) for x in re.findall(rb'w:abstractNumId="(\d+)"', numbering_xml)]
+    n = [int(x) for x in re.findall(rb'<w:num w:numId="(\d+)"', numbering_xml)]
+    return (max(a) + 1 if a else 1), (max(n) + 1 if n else 1)
+
+
+def lista_de_titulos(abstrata, lista, parada_t1_tw, pendentes_tw, t1_no_centro=False):
+    """A lista ligada aos estilos Titulo 1 a 4: numeros ate o 3, letra no 4.
+
+    O numero vem sem ponto e seguido de tabulacao (NBR 6024, 4.1). O recuo de
+    cada nivel e o do estilo, porque o da lista vence o do estilo: o recuo
+    pendente que alinha a segunda linha sob a primeira letra do titulo, ou, com o
+    Titulo 1 centralizado, recuo nenhum e a parada do vao.
+    """
+    textos = ["%1", "%1.%2", "%1.%2.%3", "%4)"]
+    formatos = ["decimal", "decimal", "decimal", "lowerLetter"]
+    niveis = []
+    for k in range(9):
+        if k < 4:
+            if k == 0 and t1_no_centro:
+                ppr = (b'<w:pPr><w:tabs><w:tab w:val="num" w:pos="%d"/></w:tabs>'
+                       b'<w:ind w:left="0" w:firstLine="0"/></w:pPr>' % parada_t1_tw)
+            else:
+                x = pendentes_tw[k + 1]
+                ppr = (b'<w:pPr><w:tabs><w:tab w:val="num" w:pos="%d"/></w:tabs>'
+                       b'<w:ind w:left="%d" w:hanging="%d"/></w:pPr>' % (x, x, x))
+            niveis.append(
+                b'<w:lvl w:ilvl="%d"><w:start w:val="1"/><w:numFmt w:val="%s"/>'
+                b'<w:pStyle w:val="Ttulo%d"/><w:lvlText w:val="%s"/>'
+                b'<w:lvlJc w:val="left"/>%s</w:lvl>'
+                % (k, formatos[k].encode(), k + 1, textos[k].encode(), ppr))
+        else:
+            niveis.append(b'<w:lvl w:ilvl="%d"><w:start w:val="1"/><w:numFmt w:val="none"/>'
+                          b'<w:lvlText w:val=""/><w:lvlJc w:val="left"/></w:lvl>' % k)
+    return (b'<w:abstractNum w:abstractNumId="%d"><w:multiLevelType w:val="multilevel"/>'
+            % abstrata + b"".join(niveis) + b"</w:abstractNum>",
+            b'<w:num w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>' % (lista, abstrata))
+
+
+def com_lista(numbering_xml, abstrata_xml, lista_xml):
+    """numbering.xml com a lista nova: a abstrata antes de toda `w:num`, e a
+    lista depois delas, como o esquema pede. Cria a parte se ela nao existe."""
+    if not numbering_xml:
+        return (b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
+                b'<w:numbering xmlns:w="http://schemas.openxmlformats.org/'
+                b'wordprocessingml/2006/main">' + abstrata_xml + lista_xml
+                + b"</w:numbering>")
+    i = numbering_xml.find(b"<w:num ")
+    if i < 0:
+        i = numbering_xml.find(b"<w:numIdMacAtCleanup")
+    if i < 0:
+        i = numbering_xml.rindex(b"</w:numbering>")
+    x = numbering_xml[:i] + abstrata_xml + numbering_xml[i:]
+    j = x.find(b"<w:numIdMacAtCleanup")
+    if j < 0:
+        j = x.rindex(b"</w:numbering>")
+    return x[:j] + lista_xml + x[j:]
+
+
 def planejar(doc, corpo_meio_ponto, linha_twips):
     pars = O.paragrafos(doc)
     tabs = O.tabelas(doc)
@@ -1629,9 +1906,9 @@ def planejar(doc, corpo_meio_ponto, linha_twips):
         # o estilo que o autor lhes deu.
         elif ESTRUTURAL_SUB.match(f["texto"]) and len(f["texto"]) < 120:
             papeis[i] = "titulo1"
-        elif f["nivel"] in (1, 2, 3) and len(f["texto"]) < 200:
+        elif f["nivel"] in (1, 2, 3, 4) and len(f["texto"]) < 200:
             papeis[i] = "titulo%d" % f["nivel"]
-        elif f["nivel_estilo"] in (1, 2, 3) and f["texto"] and len(f["texto"]) < 200:
+        elif f["nivel_estilo"] in (1, 2, 3, 4) and f["texto"] and len(f["texto"]) < 200:
             # Titulo sem numero, marcado so pelo estilo.
             papeis[i] = "titulo%d" % f["nivel_estilo"]
         elif ESTRUTURAL_TEXTUAL.match(f["texto"]) and len(f["texto"]) < 90:
@@ -1710,6 +1987,8 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     porta_das_alteracoes(alteracoes_pendentes(_xmls), Path(origem).name)
     doc = partes["word/document.xml"]
     est = partes["word/styles.xml"]
+    # ---- 0. o estilo de texto colado da web passa ao Normal
+    doc, est, n_mso, ids_mso = sem_msonormal(doc, est)
     # Guardado antes de qualquer reescrita: e dele que se le o que um paragrafo
     # herdava, quando se vai tirar dele o estilo que herdava.
     est_original = est
@@ -1719,6 +1998,51 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     sz = int(round(corpo_pt * O.MEIO_PONTO))
     linha = int(round(240 * entrelinha))
     fichas, papeis, inicio_textual, tabela_sumario, tabs = planejar(doc, sz, linha)
+
+    # ---- a numeracao dos titulos: digitada vira automatica
+    #
+    # So quando o trabalho numera os titulos digitando o numero. Quem ja numera
+    # pelo Word fica com a numeracao dele.
+    regra_num = NORMA["numero_de_titulo"]
+    defs_num = O.estilos_definidos(est)
+
+    def numera_pelo_word(f):
+        """O titulo ja tem numero de lista, no paragrafo ou no estilo."""
+        pp_ = O.ppr(f["bloco"])
+        if b"<w:numPr>" in pp_:
+            return b'<w:numId w:val="0"/>' not in pp_
+        return b"<w:numPr>" in defs_num.get(O.estilo_de(f["bloco"]) or "", {}).get("xml", b"")
+
+    titulos_ = [f for f in fichas if papeis[f["i"]].startswith("titulo")]
+    # Basta um titulo numerado pelo Word para o trabalho ficar com a numeracao
+    # dele: trocar a lista do autor apagaria os numeros de todos os outros.
+    numerar_auto = (regra_num["automatica"]
+                    and any(NUMERO_CRU.match(O.texto(f["bloco"])) for f in titulos_)
+                    and not any(numera_pelo_word(f) for f in titulos_))
+    abs_id, num_id = ids_da_numeracao(partes.get("word/numbering.xml"))
+    # A lista renumera a partir de 1, nivel a nivel. Onde o numero digitado nao
+    # e o que ela vai dar, as remissoes do texto a ele ficam erradas, e o
+    # relatorio aponta.
+    avisos_numero = []
+    if numerar_auto:
+        cont = [0, 0, 0, 0]
+        for f in fichas:
+            pap = papeis[f["i"]]
+            m_n = NUMERO_CRU.match(O.texto(f["bloco"])) if pap.startswith("titulo") else None
+            if not m_n:
+                continue
+            nv = int(pap[len("titulo"):])
+            cont[nv - 1] += 1
+            for k in range(nv, 4):
+                cont[k] = 0
+            if nv == 4:
+                # O quarto nivel passa de numero a letra: remissao a ele, que o
+                # texto faca pelo numero, fica errada sempre.
+                dado = "%s)" % chr(ord("a") + (cont[3] - 1) % 26)
+            else:
+                dado = ".".join(str(x) for x in cont[:nv])
+            if dado != m_n.group(2):
+                avisos_numero.append((f["texto"][:60], m_n.group(2), dado))
 
     conta = {k: 0 for k in ("pretextual", "tabela", "titulo1", "titulo2",
                             "legenda", "corpo", "vazio", "sumario-velho")}
@@ -1782,8 +2106,13 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         ("SubtituloCapitulo", "Subtitulo de capitulo",
          b"<w:pPr><w:keepNext/><w:keepLines/>"
          + b'<w:spacing w:before="0" w:after="%d" w:line="%d" w:lineRule="auto"/>'
-         % (pt(NORMA["titulo1"]["depois_pt"]), int(round(240 * entrelinha)))
-         + b'<w:ind w:firstLine="0"/><w:jc w:val="center"/>'
+         % (pt(NORMA["titulo1"]["depois_pt"]),
+            int(round(240 * NORMA["titulos_entrelinha"])))
+         # Na coluna do titulo, quando ele esta a esquerda.
+         + (b'<w:ind w:firstLine="0"/><w:jc w:val="center"/>'
+            if NORMA["titulo1"]["centralizado"] else
+            b'<w:ind w:left="%d" w:firstLine="0"/><w:jc w:val="left"/>'
+            % tw(NORMA["numero_de_titulo"]["pendente_cm"][1]))
          + b'<w:suppressAutoHyphens/><w:outlineLvl w:val="9"/></w:pPr>', None),
         # Entrada de lista do pre-textual, das ilustracoes e das siglas. O recuo
         # pendente alinha a continuacao sob o texto da primeira linha, em vez de
@@ -1806,6 +2135,13 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
          b"<w:pPr>" + (b'<w:spacing w:after="0" w:line="%d" w:lineRule="auto"/>'
                       % int(round(240 * NORMA["pretextual"]["resumo_entrelinha"])))
          + sem_recuo + b'<w:jc w:val="both"/></w:pPr>', None),
+        # O texto corrido do pre-textual (os agradecimentos) e prosa como a do
+        # corpo: justificado e com o recuo de primeira linha dele. So a
+        # entrelinha e a do pre-textual.
+        ("TextoPreTextual", "Texto do pre-textual",
+         b"<w:pPr>" + entrelinha_pre
+         + b'<w:ind w:firstLine="%d"/><w:jc w:val="both"/></w:pPr>'
+         % tw(NORMA["recuo_primeira_cm"]), None),
         ("SumarioAutomatico", "Sumario automatico",
          b"<w:pPr>" + simples + sem_recuo + b"</w:pPr>", None),
     ):
@@ -1857,8 +2193,8 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     est, _ = reescrever_estilo(
         est, "Cabealho",
         ppr=b"<w:pPr>" + simples + sem_recuo + b"</w:pPr>",
-        rpr=(b'<w:rPr><w:sz w:val="%d"/><w:szCs w:val="%d"/></w:rPr>'
-             % (sz_cab, sz_cab)))
+        rpr=((b'<w:rPr><w:i/><w:iCs/>' if NORMA["cabecalho"]["italico"] else b"<w:rPr>")
+             + b'<w:sz w:val="%d"/><w:szCs w:val="%d"/></w:rPr>' % (sz_cab, sz_cab)))
 
     # ---- 2. o Normal, que e a norma
     est, achou_normal = reescrever_estilo(
@@ -1942,21 +2278,23 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     t1, t2 = NORMA["titulo1"], NORMA["titulo2"]
     sz_t1 = int(t1["corpo_pt"] * 2)
     jc_t1 = centro if t1["centralizado"] else esquerda
+    linha_tit = int(round(240 * NORMA["titulos_entrelinha"]))
 
     def ppr_titulo(antes, depois, nivel_topico, jc, com_quebra, tabs=b"",
-                   ind=sem_recuo):
+                   ind=sem_recuo, lista=b""):
         # Na ordem que o esquema pede: keepNext, keepLines, pageBreakBefore,
-        # tabs, suppressAutoHyphens, spacing, ind, jc, outlineLvl.
+        # numPr, tabs, suppressAutoHyphens, spacing, ind, jc, outlineLvl.
         return (b"<w:pPr><w:keepNext/><w:keepLines/>"
                 + (b"<w:pageBreakBefore/>" if com_quebra else b"")
-                + tabs + sem_hifen
+                + lista + tabs + sem_hifen
                 + b'<w:spacing w:before="%d" w:after="%d" w:line="%d" '
-                  b'w:lineRule="auto"/>' % (antes, depois, linha)
+                  b'w:lineRule="auto"/>' % (antes, depois, linha_tit)
                 + ind + jc
                 + b'<w:outlineLvl w:val="%d"/></w:pPr>' % nivel_topico)
 
     nt = NORMA["numero_de_titulo"]
-    # Titulo 1 centralizado: a parada da o vao entre numero e titulo.
+    # Titulo 1 centralizado: a parada da o vao entre numero e titulo. A esquerda,
+    # a forma e a dos outros niveis, e vem de `tabs_pendente` e `ind_pendente`.
     tabs_t1 = (b'<w:tabs><w:tab w:val="left" w:pos="%d"/></w:tabs>'
                % tw(nt["parada_t1_cm"])) if nt["tabulacao"] else b""
 
@@ -1985,16 +2323,29 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                 % (fonte.encode(), fonte.encode(), fonte.encode(),
                    fonte.encode(), sz_local, sz_local))
 
-    ppr_t1 = ppr_titulo(pt(t1["antes_pt"]), pt(t1["depois_pt"]), 0, jc_t1,
-                        t1["quebra_pagina"], tabs=tabs_t1)
-    ppr_t0 = ppr_titulo(pt(t1["antes_pt"]), pt(t1["depois_pt"]), 9, jc_t1,
+    def lista_do_nivel(nivel):
+        if not numerar_auto:
+            return b""
+        return (b'<w:numPr><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>'
+                % (nivel - 1, num_id))
+
+    if t1["centralizado"]:
+        ppr_t1 = ppr_titulo(pt(t1["antes_pt"]), pt(t1["depois_pt"]), 0, jc_t1,
+                            t1["quebra_pagina"], tabs=tabs_t1, lista=lista_do_nivel(1))
+    else:
+        ppr_t1 = ppr_titulo(pt(t1["antes_pt"]), pt(t1["depois_pt"]), 0, jc_t1,
+                            t1["quebra_pagina"], tabs=tabs_pendente(1),
+                            ind=ind_pendente(1), lista=lista_do_nivel(1))
+    # O titulo do pre-textual nao tem numero, e fica no centro (NBR 14724, 5.2.3).
+    ppr_t0 = ppr_titulo(pt(t1["antes_pt"]), pt(t1["depois_pt"]), 9, centro,
                         t1["quebra_pagina"])
 
     est, _ = reescrever_estilo(est, "Ttulo1", ppr=ppr_t1, rpr=rpr_titulo(sz_t1))
     est, _ = reescrever_estilo(
         est, "Ttulo2",
         ppr=ppr_titulo(pt(t2["antes_pt"]), pt(t2["depois_pt"]), 1, esquerda, False,
-                       tabs=tabs_pendente(2), ind=ind_pendente(2)),
+                       tabs=tabs_pendente(2), ind=ind_pendente(2),
+                       lista=lista_do_nivel(2)),
         rpr=rpr_titulo(sz))
 
     # Titulo 0: a forma do Titulo 1, e fora do sumario. `outlineLvl` 9 e o valor
@@ -2019,6 +2370,13 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         b"<w:rPr><w:b/><w:bCs/></w:rPr>", embutido=True)
     if feito:
         criados.append("Ttulo3")
+    est, feito = criar_estilo(
+        est, "Ttulo4", "heading 4",
+        b'<w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="%d" w:after="%d"/>'
+        b'<w:outlineLvl w:val="3"/></w:pPr>' % (pt(12), pt(6)),
+        b"<w:rPr><w:b/><w:bCs/><w:i/><w:iCs/></w:rPr>", embutido=True)
+    if feito:
+        criados.append("Ttulo4")
 
     # Os demais niveis de titulo: sem recuo de primeira linha e sem hifenizacao,
     # que e o que a norma pede de todo titulo.
@@ -2033,6 +2391,15 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         ol = re.search(rb"<w:outlineLvl [^>]*/>", dentro)
         dentro = tirar(dentro, b"w:ind", b"w:jc", b"w:outlineLvl", b"w:suppressAutoHyphens")
         dentro = re.sub(rb"<w:tabs>.*?</w:tabs>", b"", dentro, flags=re.S)
+        # A entrelinha dos titulos; o que o estilo tinha antes e depois fica.
+        m_sp = re.search(rb"<w:spacing\b[^>]*/>", dentro)
+        sp = re.sub(rb'\s+w:(?:line|lineRule)="[^"]*"', b"", m_sp.group(0)) if m_sp \
+            else b"<w:spacing/>"
+        sp = sp[:-2].rstrip() + b' w:line="%d" w:lineRule="auto"/>' % linha_tit
+        dentro = (dentro[:m_sp.start()] + sp + dentro[m_sp.end():]) if m_sp \
+            else no_ppr(dentro, sp, DEPOIS_DE_SPACING)
+        if numerar_auto and nivel <= 4:
+            dentro = com_numpr(dentro, nivel - 1, num_id)
         # Cada peca no lugar que o esquema pede: tabulacao fora de ordem, antes
         # de `keepNext`, o Word ignora.
         dentro = no_ppr(dentro, tabs_pendente(nivel) + sem_hifen,
@@ -2134,13 +2501,14 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
 
     # ---- 4. as edicoes no documento, de tras para a frente
     edicoes, divisoes, renumerados, trocas_chave = [], [], [], []
+    estilos_antes = O.estilos_definidos(est)
     mudou = {k: 0 for k in ("pretextual", "tabela", "titulo", "legenda",
                             "corpo", "capa-destitulada", "figura", "citacao",
                             "referencia", "lista", "aprovacao", "dedicatoria",
                             "numero", "palavras-chave", "legenda-seq",
                             "lista-automatica", "natureza", "epigrafe",
                             "vazios-ilustracao", "vazios-referencia",
-                            "vazios-corpo-apagados", "vazios-corpo-convertidos",
+                            "vazios-corpo-apagados",
                             "espacos", "separadores")}
     # O numero das ilustracoes so vai para campo SEQ se o autor as numerou na
     # ordem em que aparecem. O campo renumera ao ser atualizado, e numeracao fora
@@ -2162,6 +2530,7 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                       for r, ok in seq_ok.items() if not ok]
     ESTILO_DE_PAPEL = {"tabela": "TabelaTrabalho",
                        "titulo1": "Ttulo1", "titulo2": "Ttulo2", "titulo3": "Ttulo3",
+                       "titulo4": "Ttulo4",
                        "legenda": id_legenda, "figura": "FiguraGrafico",
                        "lista": "ListaPreTextual",
                        "citacao": "Citao", "referencia": "Referencia"}
@@ -2184,6 +2553,19 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         if marcando and t:
             dentro_do_resumo.add(f["i"])
 
+    # O texto dos agradecimentos, do titulo ate o proximo titulo do pre-textual.
+    dos_agradecimentos = set()
+    marcando = False
+    for f in fichas:
+        if f["i"] >= inicio_textual or f["tabela"]:
+            break
+        t = f["texto"]
+        if bool(t) and len(t) < 90 and bool(TITULO_PRETEXTUAL.match(t)):
+            marcando = bool(re.match(r"^(AGRADECIMENTOS?|ACKNOWLEDG)", t, re.I))
+            continue
+        if marcando and t:
+            dos_agradecimentos.add(f["i"])
+
     for f in fichas:
         papel = papeis[f["i"]]
         bloco, p = f["bloco"], f["pPr"]
@@ -2198,6 +2580,7 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             eh_titulo = bool(t) and len(t) < 90 and bool(TITULO_PRETEXTUAL.match(t))
             sid = ("Ttulo0" if eh_titulo
                    else "ResumoTrabalho" if f["i"] in dentro_do_resumo
+                   else "TextoPreTextual" if f["i"] in dos_agradecimentos
                    else "PreTextual")
             eh_estilo_de_titulo = bool(f["estilo"]) and bool(
                 re.match(r"(Ttulo|T[íi]tulo|Heading)\d", f["estilo"]))
@@ -2229,7 +2612,8 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             # das linhas de assinatura, e substitui-lo jogou as assinaturas para
             # fora da margem.
             if (f["estilo"] and not eh_estilo_de_titulo and not eh_titulo
-                    and f["i"] not in dentro_do_resumo):
+                    and f["i"] not in dentro_do_resumo
+                    and f["i"] not in dos_agradecimentos):
                 continue
 
             if eh_estilo_de_titulo and not eh_titulo:
@@ -2250,6 +2634,10 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                 # A forma passa a morar no Titulo 0, entao a direta sai.
                 p = tirar(p, b"w:jc", b"w:ind", b"w:spacing", b"w:outlineLvl")
                 mudou["titulo"] += 1
+            elif f["i"] in dos_agradecimentos:
+                # A forma mora no estilo: o recuo e o alinhamento escritos a mao
+                # sairiam diferentes de um trabalho para outro.
+                p = tirar(p, b"w:jc", b"w:ind", b"w:spacing")
             else:
                 # O mesmo vale para o resto do pre-textual: a entrelinha vem do
                 # estilo, e a entrelinha escrita no paragrafo venceria a dele.
@@ -2272,17 +2660,24 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
 
         texto_atual = f["texto"]
         if papel.startswith("titulo"):
-            # O numero passa a ser seguido de tabulacao. E texto do autor que
-            # muda, e por isso cada troca vai registrada para a conferencia.
-            nb = numerar_titulo(bloco)
+            # Com a numeracao automatica, o numero digitado sai; sem ela, passa a
+            # ser seguido de tabulacao. E texto do autor que muda, e por isso cada
+            # troca vai registrada para a conferencia.
+            numerado = False
+            if numerar_auto:
+                m_n = NUMERO_CRU.match(O.texto(bloco))
+                nb = trocar_trecho(bloco, 0, m_n.end(), [""]) if m_n else bloco
+                numerado = bool(m_n)
+            else:
+                nb = numerar_titulo(bloco)
             if nb != bloco:
                 renumerados.append((f["texto"], O.texto(nb).strip()))
                 bloco = nb
                 texto_atual = O.texto(nb).strip()
                 mudou["numero"] += 1
             # O corpo do titulo vem do estilo: o escrito em cada corrida o
-            # venceria.
-            bloco = sem_corpo_de_letra(bloco)
+            # venceria. O espacejamento de letras tambem sai.
+            bloco = sem_espacejamento(sem_corpo_de_letra(bloco))
             # A lista desligada (`numId` 0) sai do titulo. Ela so diz "sem
             # numeracao", e os estilos de titulo reescritos aqui ja nao numeram;
             # mas com ela o Word desfaz o recuo pendente do estilo, e a segunda
@@ -2290,6 +2685,13 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             p = re.sub(rb"<w:numPr>(?:(?!</w:numPr>).)*?"
                        rb'<w:numId w:val="0"/>(?:(?!</w:numPr>).)*?</w:numPr>',
                        b"", O.ppr(bloco), flags=re.S)
+            if numerar_auto:
+                # O titulo numerado leva a lista no proprio paragrafo, alem do
+                # estilo; o que nao tinha numero leva a lista desligada, para que
+                # o estilo nao o numere.
+                nv = int(papel[len("titulo"):]) if papel[len("titulo"):].isdigit() else 1
+                p = com_numpr(p, nv - 1, num_id) if (numerado and nv <= 4) \
+                    else com_numpr(p, 0, 0)
 
         if (papel == "titulo1" and NORMA["cabecalho"]["dividir_no_dois_pontos"]
                 and ":" in texto_atual):
@@ -2306,11 +2708,11 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             duas = dividir_no_caractere(com_estilo, O.texto(bloco).index(":"))
             if duas:
                 a_bl, b_bl = duas
-                a_bl = escrever_ppr(a_bl, O.ppr(a_bl)
-                                    + b'<w:spacing w:after="0"/>')
                 b_bl = sem_negrito(tirar_dois_pontos(b_bl))
+                # O subtitulo nasce com o pPr do titulo, lista inclusive, e sairia
+                # numerado.
                 b_bl = escrever_ppr(
-                    b_bl, com_pstyle(tirar(O.ppr(b_bl), b"w:spacing"),
+                    b_bl, com_pstyle(sem_numpr(tirar(O.ppr(b_bl), b"w:spacing")),
                                      ESTILO_SUBTITULO))
                 edicoes.append((f["ini"], f["fim"], a_bl + b_bl))
                 divisoes.append((texto_atual, O.texto(a_bl).strip(),
@@ -2350,6 +2752,15 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         if papel in ESTILO_DE_PAPEL:
             # A forma passa a morar no estilo, entao a direta sai.
             limpo = tirar(p, b"w:jc", b"w:ind", b"w:spacing", b"w:outlineLvl")
+            if (papel == "titulo1" and not NORMA["titulo1"]["centralizado"]
+                    and not NUMERO_CRU.match(O.texto(f["bloco"]))
+                    and not numera_pelo_word(f)):
+                # Sem numero, no centro e sem o recuo pendente (NBR 14724, 5.2.3).
+                limpo = no_ppr(limpo, b'<w:ind w:left="0" w:firstLine="0"/>',
+                               DEPOIS_DE_IND)
+                limpo = no_ppr(limpo, b'<w:jc w:val="center"/>',
+                               rb"textDirection|textAlignment|textboxTightWrap|outlineLvl"
+                               rb"|divId|cnfStyle|rPr|sectPr|pPrChange")
             if papel == "legenda" and LEGENDA.match(texto_atual):
                 # o titulo da ilustracao fica perto dela
                 limpo += b'<w:spacing w:after="%d"/>' % pt(leg["titulo_depois_pt"])
@@ -2357,7 +2768,7 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             if novo != f["bloco"]:
                 edicoes.append((f["ini"], f["fim"], novo))
                 mudou[{"titulo1": "titulo", "titulo2": "titulo",
-                       "titulo3": "titulo"}.get(papel, papel)] += 1
+                       "titulo3": "titulo", "titulo4": "titulo"}.get(papel, papel)] += 1
             continue
 
         if bloco != f["bloco"]:
@@ -2369,7 +2780,15 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
             # A forma do corpo passa a morar no Normal, entao a direta sai
             # inteira: reescreve-la em cada paragrafo seria o defeito que o
             # programa existe para desfazer.
-            novo = escrever_ppr(bloco, tirar(p, b"w:spacing", b"w:jc", b"w:ind"))
+            pc = tirar(p, b"w:spacing", b"w:jc", b"w:ind")
+            # A lista desligada (`numId` 0) tambem sai, se o estilo nao numera:
+            # com ela o Word zera o recuo, e o da primeira linha, que vinha
+            # escrito no paragrafo e acabou de sair, nao volta do Normal.
+            if (b'<w:numId w:val="0"/>' in pc
+                    and b"<w:numPr>" not in estilos_antes.get(O.estilo_de(bloco) or "Normal",
+                                                              {}).get("xml", b"")):
+                pc = sem_numpr(pc)
+            novo = escrever_ppr(bloco, pc)
             if novo != bloco:
                 edicoes.append((f["ini"], f["fim"], novo))
                 mudou["corpo"] += 1
@@ -2601,14 +3020,11 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
 
     # ---- 4h. os vazios que sobram no corpo
     #
-    # Vem da Norma antiga. Vazio encostado em titulo, citacao ou ilustracao sai,
-    # porque o estilo ja da o espaco. Vazio entre dois paragrafos de corpo pode
-    # ser pausa que o autor quis: ele vira espaco depois do paragrafo anterior,
-    # na altura que tinha, e o paragrafo vazio sai.
-    ENCOSTA = ("titulo1", "titulo2", "titulo3", "citacao", "legenda", "figura")
-    altura_vazio = int(round(altura_de_linha(corpo_pt, entrelinha)
-                             + pt(NORMA["normal_depois_pt"])))
-    pausas = []
+    # Vazio encostado em titulo, citacao ou ilustracao sai, porque o estilo ja
+    # da o espaco. Vazio depois de paragrafo de corpo tambem sai, por decisao da
+    # coordenacao: o corpo abre com o recuo de primeira linha do Normal (o
+    # escrito a mao saiu no passo 4), e o recuo ja marca o paragrafo novo.
+    ENCOSTA = ("titulo1", "titulo2", "titulo3", "titulo4", "citacao", "legenda", "figura")
     k = 0
     while k < len(fichas):
         f = fichas[k]
@@ -2627,7 +3043,7 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
         pd = papeis[depois["i"]] if depois else None
         if corrida and pd == "titulo1":
             pass        # antes de titulo que quebra pagina: e a varredura 4b
-        elif corrida and (pa in ENCOSTA or pd in ENCOSTA):
+        elif corrida and (pa in ENCOSTA or pd in ENCOSTA or pa == "corpo"):
             # Conta so o que esta varredura apaga: a das ilustracoes (4g) ja
             # pode ter apagado parte, e contar de novo inflaria o relatorio.
             for g in corrida:
@@ -2637,19 +3053,6 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                 edicoes = [e for e in edicoes if (e[0], e[1]) != faixa]
                 edicoes.append((g["ini"], g["fim"], b""))
                 mudou["vazios-corpo-apagados"] += 1
-        elif corrida and pa == "corpo" and pd == "corpo":
-            atual = next((e for e in edicoes if (e[0], e[1]) == (antes["ini"], antes["fim"])),
-                         (antes["ini"], antes["fim"], antes["bloco"]))
-            espaco = min(2400, pt(NORMA["normal_depois_pt"]) + len(corrida) * altura_vazio)
-            pp = tirar(O.ppr(atual[2]), b"w:spacing")
-            pp = no_ppr(pp, b'<w:spacing w:after="%d"/>' % espaco, DEPOIS_DE_SPACING)
-            edicoes = [e for e in edicoes if (e[0], e[1]) != (antes["ini"], antes["fim"])]
-            edicoes.append((antes["ini"], antes["fim"], escrever_ppr(atual[2], pp)))
-            for g in corrida:
-                edicoes = [e for e in edicoes if (e[0], e[1]) != (g["ini"], g["fim"])]
-                edicoes.append((g["ini"], g["fim"], b""))
-            mudou["vazios-corpo-convertidos"] += len(corrida)
-            pausas.append((antes["i"], antes["texto"][:60], espaco / 20.0))
         k = j
 
     # ---- 8 e 9. o que so se aponta: titulo sem estilo e espaco posto a mao
@@ -2720,6 +3123,21 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     # ---- 6. a pagina: margens, hifenizacao e o numero de pagina
     doc, n_margens = escrever_margens(doc, NORMA["margens_cm"])
 
+    # ---- 6d. o paragrafo em estilo de titulo que nao e titulo numerado
+    #
+    # Com a lista ligada aos estilos, todo paragrafo em Titulo 1 a 4 sairia
+    # numerado. O que nao traz lista propria leva a lista desligada.
+    if numerar_auto:
+        pars_n = O.paragrafos(doc)
+        for a_, b_ in reversed(pars_n):
+            bl_ = doc[a_:b_]
+            if not re.fullmatch(r"Ttulo[1-4]", O.estilo_de(bl_) or ""):
+                continue
+            pp_ = O.ppr(bl_)
+            if b"<w:numPr>" in pp_:
+                continue
+            doc = doc[:a_] + escrever_ppr(bl_, com_numpr(pp_, 0, 0)) + doc[b_:]
+
     # ---- 6b. a natureza do trabalho, do meio da mancha a margem direita
     n_natureza = 0
     if NORMA["pretextual"]["natureza_no_meio"]:
@@ -2759,6 +3177,24 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                 modelo = re.search(rb"<w:sectPr\b.*?</w:sectPr>", doc[a:b], re.S)
                 doc, aviso_ded = secao_da_dedicatoria(doc, modelo.group(0))
 
+    # ---- 7b. o numero de pagina, quando a parte textual nao o tem
+    receber_numero, hdr_numero_usado, n_faltava, aviso_numero_pag = set(), False, 0, None
+    hdr_numero = None
+    if NORMA["numeracao"]["inserir_se_faltar"]:
+        # `O.ler` nao traz cabecalho nem rodape; sem eles, todo trabalho
+        # pareceria sem numero, e o que ja o tem ganharia um segundo.
+        with zipfile.ZipFile(origem) as z_:
+            cab_rod = {n: z_.read(n) for n in z_.namelist()
+                       if re.match(r"word/(header|footer)\d*\.xml$", n)}
+        if separou:
+            hdr_numero = "rId%d" % (int(novo_hdr[3:]) + 1)
+            doc, receber_numero, hdr_numero_usado, n_faltava = numero_onde_falta(
+                doc, dict(partes, **cab_rod), rels, novo_hdr, hdr_numero)
+        elif not any(b"PAGE" in dados_ for dados_ in cab_rod.values()):
+            aviso_numero_pag = ("o trabalho nao tem numero de pagina, e o pre-textual nao "
+                                "ficou em secao propria: pondo o numero, ele sairia tambem "
+                                "na capa; nao pus")
+
     # O programa escreve `r:id` nas referencias de cabecalho, e o prefixo tem de
     # estar declarado. Todo .docx do Word o declara, mas um arquivo gerado por
     # outro programa pode nao declarar, e o XML nao fecharia.
@@ -2773,6 +3209,7 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
     with zipfile.ZipFile(destino) as z:
         itens = [(i, z.read(i.filename)) for i in z.infolist()]
     n_hifen, n_pagina, n_titulo = False, 0, 0
+    hifen_desligada = False
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as z:
         for info, dados in itens:
             nome = info.filename
@@ -2785,25 +3222,53 @@ def formatar(origem, destino, corpo_pt=13.0, entrelinha=1.3, fonte="Times New Ro
                 mudou["separadores"] += k_sep
             elif nome == "word/settings.xml" and NORMA["hifenizar"]:
                 dados, n_hifen = ligar_hifenizacao(dados)
-            elif nome == "word/_rels/document.xml.rels" and separou:
-                dados = com_relacionamento(dados, novo_hdr, CABECALHO_SEM_NUMERO)
-            elif nome == "[Content_Types].xml" and separou:
-                dados = com_override(dados, "/word/" + CABECALHO_SEM_NUMERO)
+            elif nome == "word/settings.xml":
+                dados, hifen_desligada = desligar_hifenizacao(dados)
+            elif nome == "word/numbering.xml" and numerar_auto:
+                dados = com_lista(dados, *lista_de_titulos(
+                    abs_id, num_id, tw(regra_num["parada_t1_cm"]),
+                    {k: tw(v) for k, v in regra_num["pendente_cm"].items()},
+                NORMA["titulo1"]["centralizado"]))
+            elif nome == "word/_rels/document.xml.rels":
+                if separou:
+                    dados = com_relacionamento(dados, novo_hdr, CABECALHO_SEM_NUMERO)
+                if hdr_numero_usado:
+                    dados = com_relacionamento(dados, hdr_numero, CABECALHO_COM_NUMERO)
+                if numerar_auto and "word/numbering.xml" not in partes:
+                    dados = com_relacionamento(dados, proximo_rid(dados), "numbering.xml",
+                                               TIPO_NUMERACAO)
+            elif nome == "[Content_Types].xml":
+                if separou:
+                    dados = com_override(dados, "/word/" + CABECALHO_SEM_NUMERO)
+                if hdr_numero_usado:
+                    dados = com_override(dados, "/word/" + CABECALHO_COM_NUMERO)
+                if numerar_auto and "word/numbering.xml" not in partes:
+                    dados = com_override(dados, "/word/numbering.xml", CT_NUMERACAO)
             elif re.match(r"word/header\d*\.xml$", nome):
+                if nome in receber_numero:
+                    dados = com_numero_de_pagina(dados)
                 dados, k = numero_de_pagina_a_direita(dados)
                 n_pagina += k
                 if NORMA["cabecalho"]["titulo_no_cabecalho"]:
-                    dados, t = titulo_no_cabecalho(dados, largura_util)
+                    dados, t = titulo_no_cabecalho(dados, largura_util,
+                                                   com_numero=numerar_auto)
                     n_titulo += int(t)
             z.writestr(info, dados)
         if separou:
             z.writestr("word/" + CABECALHO_SEM_NUMERO, CABECALHO_VAZIO)
+        if hdr_numero_usado:
+            z.writestr("word/" + CABECALHO_COM_NUMERO, CABECALHO_NUMERADO)
+        if numerar_auto and "word/numbering.xml" not in partes:
+            z.writestr("word/numbering.xml", com_lista(None, *lista_de_titulos(
+                abs_id, num_id, tw(regra_num["parada_t1_cm"]),
+                {k: tw(v) for k, v in regra_num["pendente_cm"].items()},
+                NORMA["titulo1"]["centralizado"])))
 
     return {"conta": conta, "mudou": mudou, "criados": criados,
             "tampas": n_tampas, "secao_pretextual": separou,
             "avisos_capa": avisos_capa,
             "blindados": blindados, "soltos": soltos, "sumarios": sumarios,
-            "apagados": apagados, "divisoes": divisoes, "removidos": removidos, "renumerados": renumerados, "estrutura_antes": estrutura_antes, "estrutura_tirada": tirado, "pausas": pausas, "titulos_por_marcar": titulos_por_marcar, "empurroes": empurroes, "trocas_chave": trocas_chave, "avisos_legenda": avisos_legenda, "aviso_dedicatoria": aviso_ded, "titulo_cab": n_titulo, "margens": n_margens, "hifen": n_hifen, "pagina": n_pagina, "trocou_sumario": trocou_sumario,
+            "apagados": apagados, "divisoes": divisoes, "removidos": removidos, "renumerados": renumerados, "numeracao_auto": numerar_auto, "num_id": num_id, "avisos_numero": avisos_numero, "estrutura_antes": estrutura_antes, "estrutura_tirada": tirado, "titulos_por_marcar": titulos_por_marcar, "empurroes": empurroes, "trocas_chave": trocas_chave, "avisos_legenda": avisos_legenda, "aviso_dedicatoria": aviso_ded, "titulo_cab": n_titulo, "numero_faltava": n_faltava, "numero_posto": sorted(receber_numero) + (["novo cabecalho"] if hdr_numero_usado else []), "aviso_numero_pag": aviso_numero_pag, "margens": n_margens, "hifen": n_hifen, "hifen_desligada": hifen_desligada, "n_mso": n_mso, "ids_mso": ids_mso, "pagina": n_pagina, "trocou_sumario": trocou_sumario,
             "inicio_textual": inicio_textual, "sz": sz, "linha": linha,
             "doc_novo": doc, "doc_velho": partes["word/document.xml"],
             "tabela_sumario": tabela_sumario}
@@ -2930,6 +3395,8 @@ def main():
     ap.add_argument("--corpo", type=float, default=13.0)
     ap.add_argument("--entrelinha", type=float, default=1.3)
     ap.add_argument("--fonte", default="Times New Roman")
+    ap.add_argument("--impressao", action="store_true",
+                    help="versao final de impressao: liga a hifenizacao")
     ap.add_argument("--sem-word", action="store_true",
                     help="nao pede ao Word que abra o resultado (nao recomendado)")
     a = ap.parse_args()
@@ -2941,6 +3408,8 @@ def main():
         sys.exit("a saida nao pode ser o arquivo de entrada.")
     destino.parent.mkdir(parents=True, exist_ok=True)
 
+    if a.impressao:
+        NORMA["hifenizar"] = True
     res = formatar(origem, destino, a.corpo, a.entrelinha, a.fonte)
 
     # O relatorio vai tambem para um anexo ao lado do arquivo, como na Norma
@@ -2995,7 +3464,7 @@ def _relatar(res, a, origem, destino):
                       ("lista", "entradas das listas do pre-textual"),
                       ("aprovacao", "folha de aprovacao aberta em folha propria"),
                       ("dedicatoria", "titulo da dedicatoria, que a NBR nao quer"),
-                      ("numero", "numeros de titulo separados por tabulacao"),
+                      ("numero", "numeros de titulo digitados, que saem ou ganham tabulacao"),
                       ("legenda-seq", "titulos de ilustracao com numero em campo SEQ"),
                       ("lista-automatica", "listas de ilustracoes trocadas por campo"),
                       ("natureza", "paragrafos recuados da folha de rosto, ao meio"),
@@ -3003,7 +3472,6 @@ def _relatar(res, a, origem, destino):
                       ("vazios-ilustracao", "vazios em volta das ilustracoes, apagados"),
                       ("vazios-referencia", "vazios entre as referencias, apagados"),
                       ("vazios-corpo-apagados", "vazios do corpo encostados em titulo, citacao ou ilustracao"),
-                      ("vazios-corpo-convertidos", "vazios entre paragrafos, trocados por espaco depois"),
                       ("espacos", "trechos com espaco repetido, que virou um so"),
                       ("separadores", "ajustes no separador das notas de rodape"),
                       ("palavras-chave", "paragrafos do resumo com corpo escrito a mao"),
@@ -3017,23 +3485,30 @@ def _relatar(res, a, origem, destino):
     print("    margens: %s, escritas em %d secao(oes)"
           % (", ".join("%s %.1f cm" % (k, v)
                        for k, v in NORMA["margens_cm"].items()), res["margens"]))
-    print("    hifenizacao: %s" % ("ligada" if res["hifen"] else "nao mexida"))
+    print("    hifenizacao: %s" % (
+        "ligada, para a versao de impressao" if res["hifen"]
+        else "desligada: o arquivo a tinha ligada, e ela so vai na versao de impressao"
+        if res["hifen_desligada"] else "desligada; so a versao de impressao hifeniza"))
+    if res["ids_mso"]:
+        print("    estilo de texto colado da web (%s): %d paragrafo(s) passam ao "
+              "Normal, e o estilo sai" % (", ".join(res["ids_mso"]), res["n_mso"]))
     print("    tampas de numero de pagina apagadas: %d" % res["tampas"])
     print("    pre-textual em secao propria, contada e nao numerada: %s"
           % ("sim" if res["secao_pretextual"] else "nao"))
     print("    dedicatoria no pe da folha, em secao propria: %s"
           % (res["aviso_dedicatoria"] or "sim"))
-    for x in res["avisos_legenda"]:
-        print("    AVISO nas legendas: %s" % x)
+    print("    numeracao dos titulos: %s"
+          % ("automatica, pela lista do Word ligada aos estilos Titulo 1 a 4"
+             if res["numeracao_auto"] else "a que o trabalho ja tinha"))
     if res["trocas_chave"]:
         print()
         print("  PALAVRAS-CHAVE, como a NBR 6028 pede (conferir nomes proprios)")
         for antes_k, depois_k in res["trocas_chave"]:
             print("    antes:  %s" % antes_k)
             print("    depois: %s" % depois_k)
-    if res["avisos_capa"]:
-        for x in res["avisos_capa"]:
-            print("    AVISO na capa: %s" % x)
+    if res["numero_faltava"]:
+        print("    numero de pagina: faltava em %d secao(oes) da parte textual, e foi "
+              "posto no cabecalho (%s)" % (res["numero_faltava"], ", ".join(res["numero_posto"])))
     print("    numero de pagina: %s"
           % ("alinhado a direita em %d paragrafo(s) de cabecalho" % res["pagina"]
              if res["pagina"] else "ja estava a direita, nada a fazer"))
@@ -3041,24 +3516,39 @@ def _relatar(res, a, origem, destino):
     print("    %d paragrafo(s) vazio(s) apagado(s) antes de titulo que quebra"
           % len(res["apagados"]))
     print("    pagina; nenhum deles carregava quebra, ancora, campo ou marcacao.")
-    if res["pausas"]:
-        print()
-        print("  PAUSAS: vazio entre paragrafos virou espaco depois (conferir na pagina)")
-        for i, t, v in res["pausas"]:
-            print("    par. %4d  %4.0f pt  %s" % (i, v, t))
-    if res["titulos_por_marcar"]:
-        print()
-        print("  PARECEM TITULO E NAO RECEBERAM ESTILO DE TITULO: %d"
-              % len(res["titulos_por_marcar"]))
-        print("  (o programa nao os converte; quem decide e quem escreveu)")
-        for i, t in res["titulos_por_marcar"][:20]:
-            print("    par. %4d  %s" % (i, t))
-    if res["empurroes"]:
-        print()
-        print("  ESPACO POSTO A MAO, de 36 pt ou mais: %d" % len(res["empurroes"]))
-        print("  (se era para abrir pagina, o certo e quebra de pagina antes)")
-        for i, t, v, papel in res["empurroes"][:20]:
-            print("    par. %4d  %4.0f pt  %-10s %s" % (i, v, papel, t))
+    # Cada secao sai mesmo vazia, com o zero: secao ausente nao distingue
+    # "nada encontrado" de "nada conferido".
+    avisos = (["na numeracao: '%s' era %s e passa a %s; as remissoes do texto a ele "
+               "ficam erradas" % x for x in res["avisos_numero"]]
+              + (["no numero de pagina: %s" % res["aviso_numero_pag"]]
+                 if res["aviso_numero_pag"] else [])
+              + ["nas legendas: %s" % x for x in res["avisos_legenda"]]
+              + ["na capa: %s" % x for x in res["avisos_capa"]])
+    print()
+    print("  AVISOS: %d" % len(avisos))
+    for x in avisos:
+        print("    %s" % x)
+    print()
+    # A lista digitada sai inteira e a automatica a refaz a partir das legendas;
+    # o que nao tem legenda de ilustracao nao volta, e e isso que se aponta.
+    nao_volta = [t for t in res["removidos"] if re.match(r"(?i)\s*(tabela|table)\b", t)
+                 or re.match(r"(?i)\s*(dedicat|ep[ií]grafe)", t)]
+    print("  TEXTO DO AUTOR QUE SAIU E NAO VOLTA: %d" % len(nao_volta))
+    print("  (entrada de tabela na lista, que a norma nao tem; titulo de dedicatoria ou")
+    print("  epigrafe, que a norma nao poe. Conferir na copia com controle de alteracoes.)")
+    for t in nao_volta[:20]:
+        print("    %s" % t[:80])
+    print()
+    print("  PARECEM TITULO E NAO RECEBERAM ESTILO DE TITULO: %d"
+          % len(res["titulos_por_marcar"]))
+    print("  (o programa nao os converte; quem decide e quem escreveu)")
+    for i, t in res["titulos_por_marcar"][:20]:
+        print("    par. %4d  %s" % (i, t))
+    print()
+    print("  ESPACO POSTO A MAO, de 36 pt ou mais: %d" % len(res["empurroes"]))
+    print("  (se era para abrir pagina, o certo e quebra de pagina antes)")
+    for i, t, v, papel in res["empurroes"][:20]:
+        print("    par. %4d  %4.0f pt  %-10s %s" % (i, v, papel, t))
     print()
     print("  SUMARIO: %s"
           % ("o digitado saiu e entrou um campo automatico"

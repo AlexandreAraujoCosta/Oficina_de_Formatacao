@@ -79,6 +79,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("trabalho")
     ap.add_argument("--saida", help="pasta dos arquivos gerados (padrao: a do trabalho)")
+    ap.add_argument("--impressao", action="store_true",
+                    help="versao final de impressao: liga a hifenizacao")
     a = ap.parse_args()
 
     origem = Path(a.trabalho).resolve()
@@ -98,7 +100,8 @@ def main():
     print("NORMA: %s" % origem.name)
 
     print("\n[1/4] formatacao")
-    if not rodar("formatar.py", origem, "--saida", formatado):
+    extra = ["--impressao"] if a.impressao else []
+    if not rodar("formatar.py", origem, "--saida", formatado, *extra):
         sys.exit("\nA Norma parou na formatacao. Nada do que foi gravado deve ser entregue.")
 
     print("\n[2/4] copia com controle de alteracoes")

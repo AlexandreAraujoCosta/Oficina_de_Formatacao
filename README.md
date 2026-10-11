@@ -16,6 +16,9 @@ relatório do que mudou e o PDF:
 
     python scripts/norma.py trabalho.docx
 
+A hifenização fica desligada. Ela é a última providência, e só a versão final de
+impressão a liga: `python scripts/norma.py trabalho.docx --impressao`.
+
 Ela roda, em ordem, os programas abaixo, e para na primeira etapa que reprovar.
 Para usá-la por um agente (Claude Code, ou VS Code com Copilot em modo agente),
 o `AGENTS.md` traz as instruções que o agente segue, e a página da Norma nas
